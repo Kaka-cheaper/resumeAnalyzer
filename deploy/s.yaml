@@ -1,0 +1,80 @@
+# Serverless Devs 部署配置（阿里云函数计算 FC 3.0 - Custom Container 模式）
+#
+# 部署流程：
+#   1. 本地 docker build -t resume-analyzer:local .
+#   2. docker tag + docker push 到 ACR
+#   3. cd deploy && . .\export_env.ps1
+#   4. s deploy -y
+#
+# Custom Container 模式优点：
+#   - 完全控制运行环境（Python 3.10 + 所有依赖）
+#   - 不受 FC 内置 runtime 协议限制
+#   - 本地 docker run 即可验证
+#
+# 参考：https://manual.serverless-devs.com/user-guide/aliyun/#fc3
+
+edition: 3.0.0
+name: resume-analyzer-app
+access: default
+
+vars:
+  region: cn-beijing  # 与 ACR 仓库同 region，避免跨地域拉镜像
+
+resources:
+  resume-fc:
+    component: fc3
+    props:
+      region: ${vars.region}
+      functionName: resume-analyzer
+      description: 智能简历分析系统（FastAPI on FC Custom Container）
+      runtime: custom-container
+      cpu: 0.5
+      memorySize: 512
+      diskSize: 512
+      timeout: 60
+      instanceConcurrency: 5
+      customContainerConfig:
+        image: crpi-jxpuwerawve4hybu.cn-beijing.personal.cr.aliyuncs.com/resume-analyzer/xinghuo:v0.1.0
+        port: 9000
+        # 这两个个人版 ACR 通常不用 ACR EE 的 instanceID
+      environmentVariables:
+        PYTHONUNBUFFERED: "1"
+        # ===== LLM =====
+        MIMO_API_KEY: ${env(MIMO_API_KEY)}
+        MIMO_BASE_URL: ${env(MIMO_BASE_URL)}
+        MIMO_MODEL: ${env(MIMO_MODEL)}
+        MIMO_TIMEOUT: "30"
+        MIMO_MAX_RETRIES: "3"
+        # ===== App =====
+        APP_NAME: resume-analyzer
+        APP_VERSION: "0.1.0"
+        ENVIRONMENT: production
+        LOG_LEVEL: INFO
+        # ===== 缓存 =====
+        CACHE_BACKEND: memory
+        CACHE_DEFAULT_TTL: "86400"
+        # ===== 上传 =====
+        MAX_UPLOAD_SIZE_MB: "10"
+        # ===== 评分权重 =====
+        HEURISTIC_WEIGHT: "0.6"
+        LLM_WEIGHT: "0.4"
+        SKILL_WEIGHT: "0.5"
+        EXPERIENCE_WEIGHT: "0.3"
+        EDUCATION_WEIGHT: "0.2"
+        # ===== CORS =====
+        CORS_ORIGINS: "*"
+      triggers:
+        - triggerName: http-trigger
+          triggerType: http
+          description: HTTP 触发器（评审用）
+          qualifier: LATEST
+          triggerConfig:
+            authType: anonymous
+            disableURLInternet: false
+            methods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+              - HEAD

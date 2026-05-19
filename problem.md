@@ -345,3 +345,42 @@ codesee sync（增量 patch 模式 A）：
 - `.codesee/cache/sync-patch.json`（生成）
 - `problem.md`（追加本条记录）
 应当达成的效果：题目「模块三：简历评分与匹配」必选 + 加分项（LLM 精准评分）全部实现；启发式（73.3% 用 Python 通用决策树）+ LLM（语义级 HR 评估）双层评分按权重融合；缓存层全链路命中（PDF 解析 / 信息抽取三段 / JD 关键词 / 匹配评分）；后续 G/H 阶段可专注于测试收口和部署。
+
+
+问题10：阿里云 FC 部署 + Docker 镜像方案 + 三次失败到成功
+解决方案：经历三轮尝试最终走 Custom Container 模式。
+- **尝试 1（custom.debian10 + Web Function 模式）**：部署成功但 502，日志显示 FC custom.debian10 自带 **Python 3.7**，无法 import `Literal`（需 3.8+）和 Pydantic v2（需 3.8+）；项目代码用了 `from __future__ import annotations` 和 `X | None` 语法（3.10+）
+- **尝试 2（python3.10 内置 runtime + WSGI handler 模式 + a2wsgi 桥接 ASGI）**：发现内置 runtime 不支持 customRuntimeConfig；WSGI handler 协议 FC 给的第二参数是 `FCContext` 不是标准 `start_response`，且 anyio 4.13 在 Python 3.10 仍依赖 `exceptiongroup`（pip --platform 模式自动 transitive 解析有 bug，不会下 stdlib backport 包）；fallback handler 都触发不到（import 阶段崩溃整个 Python 进程，FC 直接返通用 502）
+- **尝试 3（Custom Container，成功）**：
+  - 写 Dockerfile：`python:3.10-slim` + apt 装 ca-certificates + pip install requirements-prod.txt + uvicorn 启动
+  - 写 .dockerignore 排除 .venv / python/ / tests/ / samples/ / docs/ 等无关内容
+  - 本地 `docker build -t resume-analyzer:local .` → 68 秒
+  - 本地 `docker run -d -p 9000:9000 -e MIMO_API_KEY=...` 验证 health 200 + llm_configured=true ✓
+  - `docker login` ACR + `docker tag` + `docker push` 推到阿里云容器镜像服务（北京 region）
+  - 改 s.yaml 为 Custom Container 模式：runtime=custom-container，customContainerConfig.image 指向 ACR 镜像，region=cn-beijing（与 ACR 同 region 避免跨地域拉镜像）
+  - `s remove` 删杭州旧函数（FC 不允许在线切 region）
+  - `s deploy -y` 部署 → state=Active，URL = https://resume-analyzer-lqemqaynnr.cn-beijing.fcapp.run
+
+中间踩坑：
+1. **C 盘空间不足（剩 700MB）** → 把 pip TMPDIR/TEMP/TMP 全指到 D:\pip_temp，绕开 Windows Temp 限制
+2. **mcp/sse-starlette 版本冲突 warning** → 不影响目标 target 安装，可忽略
+3. **YAML 长命令含冒号 `--only-binary=:all:`** → 必须用单引号包，否则 YAML 解析为 mapping
+4. **logConfig 重复部署被覆盖** → 本期不强求 SLS 日志，控制台「实例日志」可看
+5. **首次拉镜像 + 冷启动叠加 120s+ 超时** → 第二次请求即 466ms
+
+线上端到端验收：
+- GET /health → 200, environment=production, llm_configured=true ✓
+- POST /api/resume/upload（PDF）→ 200, resume_id 12 位 hex ✓
+- GET /api/resume/{id} → 200, 5727ms, 三段抽取齐全（basic 4/4 / job_intent / yoe=5.0 / education / experience / projects）✓
+- POST /api/match fusion → 200, 11210ms, final=84（heuristic 90 ⊕ LLM 75 按 0.6:0.4）✓
+- 全部启发式分项准确：skill 80（must 3/4 + nice 2/2）/ experience 100 / education 100 ✓
+
+修改的代码文件：
+- `Dockerfile`、`.dockerignore`（新建）
+- `deploy/s.yaml`（重写为 Custom Container + cn-beijing 模式）
+- `deploy/requirements-prod.txt`（新建生产依赖，不带 dev 工具）
+- `deploy/export_env.ps1`、`deploy/cleanup_disk.ps1`（新建辅助脚本）
+- `bootstrap.py`、`.fcignore`（保留作为「曾尝试 Python runtime」的产物）
+- `.gitignore`（追加 python/、deploy/_scaffold、deploy/.s）
+- `problem.md`（追加本条记录）
+应当达成的效果：题目「运行环境：阿里云 Serverless（如函数计算 FC）」要求满足，线上服务可被评审 curl 验证；URL 已就绪可写进 README。后续 H 阶段（README 撰写 + Swagger 美化 + GH Pages 前端）可以引用此 URL 作为「线上演示地址」。

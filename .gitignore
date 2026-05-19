@@ -44,3 +44,9 @@ s.bak.yaml
 
 # CodeSee 缓存（已被 .codesee/.gitignore 忽略，这里二次保险）
 .codesee/cache/
+
+
+# FC 部署残留（pre-deploy 装的 Linux wheel；Custom Container 模式下不再需要）
+python/
+deploy/_scaffold/
+deploy/.s/

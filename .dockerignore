@@ -1,0 +1,60 @@
+# 不进 Docker 镜像的内容（让 build context 小，加快 docker build）
+
+# Python 缓存
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# 虚拟环境
+.venv/
+venv/
+
+# 已装的 manylinux wheel（用 Dockerfile 内的 pip install 重装）
+python/
+
+# IDE / 系统
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# 敏感配置（用 FC 环境变量传）
+.env
+.env.*
+
+# 测试与样本
+tests/
+samples/
+*.pdf
+
+# 部署脚本
+deploy/.s/
+deploy/_scaffold/
+deploy/cleanup_disk.ps1
+deploy/export_env.ps1
+
+# 文档与无关文件
+docs/
+.codesee/
+.agents/
+.kiro/
+.git/
+.gitignore
+.gitattributes
+problem.md
+题目详情.md
+README.md
+AGENTS.md
+dev-requirements.txt
+pyproject.toml
+scripts/codesee_status.py
+bootstrap.py
+
+# 日志
+*.log
+logs/

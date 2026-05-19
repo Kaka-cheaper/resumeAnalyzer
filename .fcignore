@@ -1,0 +1,62 @@
+# FC 部署排除文件（与 .gitignore 类似，但只控制上传到 FC 的内容）
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# 虚拟环境（FC 上重新装依赖）
+.venv/
+venv/
+
+# 环境配置（敏感信息走 FC 环境变量）
+.env
+.env.*
+
+# 测试与样本（不进 FC）
+tests/
+samples/
+*.pdf
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# 日志
+*.log
+logs/
+
+# Serverless Devs 自身
+.s/
+deploy/
+
+# CodeSee（不影响运行）
+.codesee/
+.agents/
+.kiro/
+docs/
+problem.md
+题目详情.md
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# 文档
+README.md
+AGENTS.md
+
+# 开发依赖
+dev-requirements.txt
+pyproject.toml
+
+# 脚本（按需保留 check_llm.py，不影响运行时）
+scripts/codesee_status.py
