@@ -115,3 +115,47 @@ codesee sync（增量 patch 模式 A）：
 - `.codesee/cache/sync-patch.json`（生成）
 - `problem.md`（追加本条记录）
 应当达成的效果：第一个用户可见的业务闭环跑通——POST /api/resume/upload 接收 PDF → 校验 → 解析 → 清洗 → 落临时 store → 返回 resume_id；幂等保证；扫描件检测；统一信封 + cache_hit + request_id 全链路到位。后续 D（LLM 客户端）+ E（信息抽取）可直接消费 resume_store.get(resume_id) 获取 ParseResult。
+
+
+问题6：开干 C（缓存抽象 + Memory + Redis 双实现）
+解决方案：C1+C2 一并完成，避免 D/E/F 阶段二次重构。所有缓存读写从此走 Cache 协议，调用方零依赖具体实现。
+- `app/cache/base.py`：`Cache` Protocol（get/set/delete/exists 全 async，dict in/out）+ `CacheKeys` 工厂集中管理 key 命名（resume/pdf_parse/extract/jd/match）+ `DEFAULT_TTL_SECONDS=86400`
+- `app/cache/memory.py`：MemoryCache 协程安全（asyncio.Lock）+ 惰性 TTL 过期 + clear/size 调试方法
+- `app/cache/redis_impl.py`：RedisCache 异步实现 + JSON 序列化（dict ↔ str）+ **失败安全**（连接异常/序列化错误统一 warn + 静默降级到未命中路径，不抛业务）
+- `app/services/cache_service.py`：工厂 + lru_cache 单例；按 settings.cache_backend 选实现；redis 后端 + 空 URL / 装包失败 → 自动降级 memory（warn 不崩）；redis 客户端 lazy import 避免无 redis 时启动失败
+- 重构 `app/services/resume_store.py`：从 module-level dict 升级到 Cache 抽象，对外接口（save/get/exists/clear）零改动；调用方（B 阶段 upload 路由）零修改
+- `dev-requirements.txt`：fakeredis + reportlab 分离到开发依赖，不进生产部署
+
+测试覆盖：
+- `tests/test_cache.py`：10 个用例（set/get/exists/delete/TTL 过期/非法 TTL/覆写/Protocol 契约/并发写入安全/CacheKeys 命名快照）
+- `tests/test_cache_redis.py`：9 个用例（fakeredis 模拟，含连接失败安全降级、JSON 解析失败、TTL）
+- `tests/test_cache_service.py`：3 个用例（默认 memory / redis 空 URL 降级 / redis 有 URL 注入 RedisCache）
+- `tests/test_resume_store.py`：4 个用例回归（save/get/exists/overwrite），重构后行为不变
+
+验收：
+- pytest 全套 30/30 通过 ✓
+- 端到端：上传同份 PDF 两次 → cache_hit=true，resume_id 一致（C1 重构无回归）✓
+- ruff format + check 全过 ✓
+
+设计要点：
+1. **失败安全**是 RedisCache 的核心策略——网络抖动/Redis 宕机时业务降级到未命中路径继续跑，不让加分项变成单点故障
+2. **CacheKeys 工厂**集中命名规则，未来改前缀（如 K8s 多租户）一处生效
+3. **fakeredis** 让 Redis 契约测试在 Windows / FC 沙箱环境也能跑，不需要真实 Redis 服务
+4. **调用方零依赖具体实现**：D/E/F 阶段写抽取/评分时直接 `cache_service.get_cache()` 拿 Cache 对象用即可
+
+codesee sync（增量 patch）：
+- f-cache：planned → 移除（保留 v1-bonus 标识加分项），confidence 0.3 → 0.92
+- 5 个 step refs 全补：base.py / memory.py / redis_impl.py / cache_service.py
+- summary 更新反映双实现
+- 应用 11 op，validate exit 0
+
+修改的代码文件：
+- `app/cache/{base,memory,redis_impl}.py`（新建）
+- `app/services/cache_service.py`（新建）
+- `app/services/resume_store.py`（重构，对外接口零改动）
+- `tests/test_cache.py`、`tests/test_cache_redis.py`、`tests/test_cache_service.py`（新建）
+- `dev-requirements.txt`（新建）
+- `.codesee/features.json`（patch 应用，f-cache 升级到 implemented）
+- `.codesee/cache/sync-patch.json`（生成）
+- `problem.md`（追加本条记录）
+应当达成的效果：本期 MVP 默认 memory 后端（零依赖），FC 部署一条命令直接跑；如要跨实例共享或加缓存层，只需改 CACHE_BACKEND=redis + REDIS_URL，应用代码零改动；后续 D/E/F 阶段所有 LLM 抽取与评分结果都可以走同一个 Cache 实例，按 CacheKeys 命名空间区分。

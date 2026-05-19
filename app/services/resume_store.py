@@ -1,52 +1,48 @@
-"""简历临时存储
+"""简历存储
 
-⚠️ 临时实现：本期 B 阶段用 module-level dict 兜住跨请求的简历查询；
-   C1 阶段会替换为 Cache 抽象（memory/redis 双实现）。
+C1 阶段重构：从 module-level dict 升级到 Cache 抽象。
+对外接口不变（save / get / exists / clear），调用方零改动。
 
-设计意图：
-- 上传接口写入解析结果；查询/抽取/匹配接口读取
-- 不持久化，进程重启即丢；这是 MVP 选择
-- 接口设计成 async，便于 C1 阶段无缝切到异步 cache
+后续 D/E 阶段的抽取结果、F 阶段的匹配评分会走同一个 Cache 实例，
+通过不同 key 命名空间区分（详见 app/cache/base.py CacheKeys）。
 """
 
 from __future__ import annotations
 
-import asyncio
-import time
-
+from app.cache.base import CacheKeys
+from app.core.config import get_settings
 from app.models.resume import ParseResult
-
-_DEFAULT_TTL_SECONDS = 24 * 3600  # 24 小时
-
-_store: dict[str, tuple[ParseResult, float]] = {}
-_lock = asyncio.Lock()
+from app.services.cache_service import get_cache
 
 
-async def save(resume_id: str, parse_result: ParseResult, ttl: int = _DEFAULT_TTL_SECONDS) -> None:
+async def save(resume_id: str, parse_result: ParseResult, ttl: int | None = None) -> None:
     """保存解析结果。"""
-    async with _lock:
-        _store[resume_id] = (parse_result, time.time() + ttl)
+    settings = get_settings()
+    cache = get_cache()
+    await cache.set(
+        CacheKeys.resume(resume_id),
+        parse_result.model_dump(),
+        ttl=ttl or settings.cache_default_ttl,
+    )
 
 
 async def get(resume_id: str) -> ParseResult | None:
-    """读取解析结果；过期则返回 None 并清理。"""
-    async with _lock:
-        item = _store.get(resume_id)
-        if item is None:
-            return None
-        result, expire_at = item
-        if time.time() > expire_at:
-            _store.pop(resume_id, None)
-            return None
-        return result
+    """读取解析结果；不存在或过期返回 None。"""
+    cache = get_cache()
+    raw = await cache.get(CacheKeys.resume(resume_id))
+    if raw is None:
+        return None
+    return ParseResult(**raw)
 
 
 async def exists(resume_id: str) -> bool:
     """判断 resume_id 是否存在且未过期。"""
-    return (await get(resume_id)) is not None
+    cache = get_cache()
+    return await cache.exists(CacheKeys.resume(resume_id))
 
 
 async def clear() -> None:
-    """清空所有数据；测试用。"""
-    async with _lock:
-        _store.clear()
+    """清空（仅 memory 后端支持，测试用）。"""
+    cache = get_cache()
+    if hasattr(cache, "clear"):
+        await cache.clear()

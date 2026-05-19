@@ -1,0 +1,8 @@
+# 开发与测试专用依赖（不进生产部署）
+# 用法：pip install -r requirements.txt -r dev-requirements.txt
+
+# Redis 契约测试（无需真实 redis 服务）
+fakeredis[json]==2.26.1
+
+# 生成测试 PDF
+reportlab==4.2.5

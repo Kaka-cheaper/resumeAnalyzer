@@ -2,7 +2,7 @@
   "version": "0",
   "manifest": {
     "repo": "智能简历分析系统",
-    "generated_at": "2026-05-19T05:30:00Z",
+    "generated_at": "2026-05-19T07:00:00Z",
     "generator": "ai@claude-opus-4.7 via planning+spec",
     "lang": "zh-CN"
   },
@@ -1049,7 +1049,7 @@
     {
       "id": "f-cache",
       "name": "结果缓存",
-      "summary": "Cache 抽象：memory（默认，零依赖）/ redis（加分），按文件/文本 hash 缓存解析、抽取、评分",
+      "summary": "Cache 抽象（Protocol）+ Memory（asyncio.Lock+TTL，默认）+ Redis（OpenAI 兼容，加分项），按 design §6.4 缓存键设计",
       "epicId": "infra",
       "triggers": [
         {
@@ -1061,27 +1061,61 @@
         {
           "id": "key",
           "name": "计算缓存键",
-          "role": "compute"
+          "role": "compute",
+          "refs": [
+            {
+              "file": "app/cache/base.py"
+            }
+          ]
         },
         {
           "id": "lookup",
           "name": "查询缓存",
-          "role": "data-read"
+          "role": "data-read",
+          "refs": [
+            {
+              "file": "app/cache/memory.py"
+            },
+            {
+              "file": "app/cache/redis_impl.py"
+            }
+          ]
         },
         {
           "id": "hit",
           "name": "返回缓存结果",
-          "role": "output"
+          "role": "output",
+          "refs": [
+            {
+              "file": "app/cache/memory.py"
+            },
+            {
+              "file": "app/cache/redis_impl.py"
+            }
+          ]
         },
         {
           "id": "miss",
           "name": "继续后续计算",
-          "role": "other"
+          "role": "other",
+          "refs": [
+            {
+              "file": "app/services/cache_service.py"
+            }
+          ]
         },
         {
           "id": "save",
           "name": "写入缓存",
-          "role": "data-write"
+          "role": "data-write",
+          "refs": [
+            {
+              "file": "app/cache/memory.py"
+            },
+            {
+              "file": "app/cache/redis_impl.py"
+            }
+          ]
         }
       ],
       "flow": [
@@ -1108,13 +1142,13 @@
           "kind": "async"
         }
       ],
-      "confidence": 0.3,
+      "confidence": 0.92,
       "provenance": "ai",
       "tags": [
-        "planned",
+        "sdd",
         "v1-bonus"
       ],
-      "updated_at": "2026-05-19T00:00:00Z"
+      "updated_at": "2026-05-19T07:00:00Z"
     },
     {
       "id": "f-deploy",
