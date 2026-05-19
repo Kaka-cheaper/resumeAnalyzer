@@ -1,0 +1,43 @@
+# GitHub Pages 部署：把 frontend/ 静态发布
+# 触发：每次 push 到 master/main 分支自动部署
+name: Deploy frontend to GitHub Pages
+
+# 用 "on" 引号防止 YAML 1.1 把 on 解析成 boolean true（GitHub Actions 偶发 bug）
+"on":
+  push:
+    branches: [master, main]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/deploy-pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./frontend
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

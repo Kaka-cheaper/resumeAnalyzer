@@ -55,16 +55,30 @@
 ## 架构
 
 ```
-前端（GitHub Pages 静态托管）
-   │  HTTPS + CORS
-   ▼
-阿里云函数计算 FC（Custom Container · Python 3.10）
-   ├─ FastAPI App（4 路由：upload / extract / jd / match）
-   ├─ Cache 抽象（memory 默认 / redis 可切）
-   └─ MiMo 客户端（重试 + 超时 + JSON 模式 + 三层兜底）
-        │  OpenAI 兼容协议
-        ▼
-小米 MiMo（mimo-v2-flash · 256K 上下文）
+┌─────────────────────────────────────┐
+│ 前端（GitHub Pages 静态托管）        │
+│ 单文件 HTML + Tailwind + 原生 fetch  │
+└─────────────────┬───────────────────┘
+                  │ HTTPS + CORS
+                  ▼
+┌─────────────────────────────────────┐
+│ 阿里云函数计算 FC（Custom Container）│
+│ ┌─────────────────────────────────┐ │
+│ │ FastAPI App                     │ │
+│ │ ├─ /api/resume/upload  上传解析 │ │
+│ │ ├─ /api/resume/{id}    三段抽取 │ │
+│ │ ├─ /api/jd/keywords    JD 提词  │ │
+│ │ └─ /api/match          匹配评分 │ │
+│ ├─────────────────────────────────┤ │
+│ │ Cache 抽象（memory / redis）    │ │
+│ │ MiMo 客户端（重试/超时/JSON）   │ │
+│ └─────────────────────────────────┘ │
+└─────────────────┬───────────────────┘
+                  │ OpenAI 兼容协议
+                  ▼
+┌─────────────────────────────────────┐
+│ 小米 MiMo（mimo-v2-flash · 256K 上下文） │
+└─────────────────────────────────────┘
 ```
 
 ## 接口契约
