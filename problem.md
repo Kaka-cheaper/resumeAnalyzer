@@ -211,3 +211,65 @@ D 阶段实现：
 - `.env`（用户配置，已被 .gitignore，本次未读取 API_KEY 内容，仅替换 MIMO_MODEL 行）
 - `problem.md`（追加本条记录）
 应当达成的效果：E/F 阶段写抽取与评分时直接 `from app.llm.client import get_llm_client; client.chat_json(system=..., user=..., schema=ResumeBasicSchema)` 即可拿到解析后的 Pydantic 实例 + 用量数据，所有重试/超时/降级/隐私已在客户端内置；调用方零关心底层细节。集成测试证明真实 MiMo 在 1-2s 延迟下稳定可用，JSON 模式 + schema 路径可工作（前提：业务 prompt 显式声明字段名）。
+
+
+问题8：开干 E（信息抽取 E1+E2+E3+E4 全做）
+解决方案：四个子任务一并实现，复用同一抽取模式（系统提示 + JSON schema + 缓存 + 降级）。
+- `app/models/resume.py` 补全：ResumeBasic / ResumeJobIntent / Education / WorkExperience / Project / ResumeBackground / ResumeAggregate
+- `app/llm/prompts.py`：三段业务 prompt（EXTRACT_BASIC_SYSTEM / EXTRACT_JOB_INTENT_SYSTEM / EXTRACT_BACKGROUND_SYSTEM）
+  - 每段 system 显式给出 JSON schema 与字段名（防 D 阶段教训：模型用中文 key）
+  - 含「字段缺失时输出 null」「字段名必须英文」「不要编造」三条强约束
+  - 学历枚举严格用：博士/硕士/本科/大专/高中/其他
+  - 时间格式规范化：YYYY-MM 或 YYYY；present/至今/Now 统一写 "present"
+- `app/services/extract_service.py`：
+  - `_cached_extract()` 通用流程：缓存 hash → schema 校验 → 缓存命中直接返回 → 未命中调 LLM → 写缓存
+  - `extract_basic()`：LLM 失败降级到 `_regex_fallback_basic()`（手机号 / 邮箱 / 标签姓名）
+  - `extract_job_intent()`：失败返回空 ResumeJobIntent
+  - `extract_background()`：失败返回空 ResumeBackground；成功后用 `calc_years_of_experience()` 重算年限覆盖 LLM 结果（LLM 算的常常不准）
+  - `_parse_month()` 兼容 YYYY / YYYY-MM / YYYY.MM / YYYY/MM / present / 至今 / Now
+  - `calc_years_of_experience()`：累加月数 / 12，重叠不去重，留 1 位小数
+  - 文本上限 6000 字 truncate（节省 token + 避免 LLM 上下文超限）
+  - background 段 max_tokens 给 2048（教育/工作/项目通常较多）
+- `app/api/resume.py` 补 `GET /api/resume/{resume_id}`：
+  - resume_id 路径参数 pattern 校验：`^rsm_[a-f0-9]{12}$`
+  - 三段抽取 `asyncio.gather(return_exceptions=True)` 并发，任一失败不影响其他
+  - 失败的段记入 `extract_errors`，返回空对象（保证响应结构稳定）
+  - meta 自动汇总：tokens_used 累加三段 / cache_hit 任一命中即 true
+  - OpenAPI 200 example 完整给出（评审 Try it out 友好）
+
+测试覆盖（23 个 extract 单元 + 73 全套全过）：
+- 正则兜底 3 个：手机号+邮箱、标签姓名、空文本
+- _parse_month 4 个：YYYY-MM / YYYY / present 同义词 / 非法
+- calc_years 7 个：单段、多段、present、空、无效日期跳过、空列表、end<start 跳过
+- extract_basic 3 个：LLM 成功+缓存命中+失败降级
+- extract_job_intent 2 个：LLM 成功+失败兜空
+- extract_background 3 个：年限计算覆盖 LLM、无日期保留 LLM 值、失败兜空
+- 缓存 key 命名空间隔离（basic/job/background 互不干扰 + 与 CacheKeys 工厂一致）
+
+端到端真实 LLM 验收：
+- 上传 → 200, resume_id=rsm_f69a1006b576
+- 第一次 GET 触发 LLM：4640ms, 2517 tokens, basic 4/4 命中（Zhang San / 138-0000-0000 / zhangsan@example.com / Haidian District, Beijing），target_role="Backend Engineer"，yoe=5.0（2020-2025 自动算），education 1 条（北大本科），experience 1 条（ACME Corp），projects 5 条（sample 数据问题，不是抽取 bug），extract_errors=[]
+- 第二次 GET 命中缓存：4ms, cache_hit=true, tokens_used=0
+- 不存在的 resume_id → 404 RESUME_NOT_FOUND（带 suggestion）
+- 格式不对（wrong_format）→ 422 VALIDATION_ERROR（pydantic pattern 校验）
+
+踩坑修正：
+- 手机号正则原写 `1[3-9]\d{9}`（11 位连续）漏了 `138-0000-0000` 这种连字符格式 → 改 `1[3-9]\d[\s\-]?\d{4}[\s\-]?\d{4}`，复跑全过
+
+codesee sync（增量 patch 模式 A）：
+- f-extract-basic：planned → 移除，confidence 0.5 → 0.92，7 个 step refs 全补
+- f-extract-job：planned → 移除（保留 v1-bonus），0.3 → 0.88
+- f-extract-background：planned → 移除（保留 v1-bonus），0.3 → 0.9
+- f-result-json：planned → 移除，0.45 → 0.92，summary 更新为「三段并发抽取后聚合」，触发 detail 改为 `GET /api/resume/{resume_id}`
+- 应用 42 op，validate exit 0
+
+修改的代码文件：
+- `app/models/resume.py`（补抽取模型）
+- `app/llm/prompts.py`（业务 prompt）
+- `app/services/extract_service.py`（新建，三段抽取 + 年限计算 + 正则兜底）
+- `app/api/resume.py`（GET 接口 + 三段并发）
+- `tests/test_extract_service.py`（新建 23 个单测）
+- `.codesee/features.json`（patch 应用，4 个 feature 升级到 implemented）
+- `.codesee/cache/sync-patch.json`（生成）
+- `problem.md`（追加本条记录）
+应当达成的效果：题目「模块二：关键信息提取」必选 + 加分项全部实现；GET /api/resume/{id} 端到端首次 4.6s + 缓存命中 4ms；任一段失败不影响其他段；正则兜底保证 LLM 全失败时基本信息（邮箱/手机号）仍可拿到；工作年限自动计算覆盖 LLM 不准的值；为 F 阶段（JD + 匹配评分）提供齐全的 ResumeAggregate 数据源。

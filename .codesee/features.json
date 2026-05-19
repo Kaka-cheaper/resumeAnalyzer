@@ -2,7 +2,7 @@
   "version": "0",
   "manifest": {
     "repo": "智能简历分析系统",
-    "generated_at": "2026-05-19T07:00:00Z",
+    "generated_at": "2026-05-19T08:30:00Z",
     "generator": "ai@claude-opus-4.7 via planning+spec",
     "lang": "zh-CN"
   },
@@ -508,37 +508,72 @@
         {
           "id": "in",
           "name": "接收清洗文本",
-          "role": "input"
+          "role": "input",
+          "refs": [
+            {
+              "file": "app/services/extract_service.py"
+            }
+          ]
         },
         {
           "id": "prompt",
           "name": "构造抽取提示",
-          "role": "compute"
+          "role": "compute",
+          "refs": [
+            {
+              "file": "app/llm/prompts.py"
+            }
+          ]
         },
         {
           "id": "call-llm",
           "name": "调用大模型",
-          "role": "side-effect"
+          "role": "side-effect",
+          "refs": [
+            {
+              "file": "app/llm/client.py"
+            }
+          ]
         },
         {
           "id": "parse",
           "name": "解析模型输出",
-          "role": "transform"
+          "role": "transform",
+          "refs": [
+            {
+              "file": "app/llm/client.py"
+            }
+          ]
         },
         {
           "id": "fallback",
           "name": "正则兜底抽取",
-          "role": "compute"
+          "role": "compute",
+          "refs": [
+            {
+              "file": "app/services/extract_service.py"
+            }
+          ]
         },
         {
           "id": "out",
           "name": "输出基本信息",
-          "role": "output"
+          "role": "output",
+          "refs": [
+            {
+              "file": "app/api/resume.py"
+            }
+          ]
         },
         {
           "id": "fail",
           "name": "返回抽取失败",
-          "role": "error"
+          "role": "error",
+          "refs": [
+            {
+              "file": "app/core/exceptions.py"
+            }
+          ]
         }
       ],
       "flow": [
@@ -580,12 +615,12 @@
           "kind": "error"
         }
       ],
-      "confidence": 0.5,
+      "confidence": 0.92,
       "provenance": "ai",
       "tags": [
-        "planned"
+        "sdd"
       ],
-      "updated_at": "2026-05-19T00:00:00Z"
+      "updated_at": "2026-05-19T08:30:00Z"
     },
     {
       "id": "f-extract-job",
@@ -602,27 +637,52 @@
         {
           "id": "in",
           "name": "接收清洗文本",
-          "role": "input"
+          "role": "input",
+          "refs": [
+            {
+              "file": "app/services/extract_service.py"
+            }
+          ]
         },
         {
           "id": "prompt",
           "name": "构造意向提示",
-          "role": "compute"
+          "role": "compute",
+          "refs": [
+            {
+              "file": "app/llm/prompts.py"
+            }
+          ]
         },
         {
           "id": "call-llm",
           "name": "调用大模型",
-          "role": "side-effect"
+          "role": "side-effect",
+          "refs": [
+            {
+              "file": "app/llm/client.py"
+            }
+          ]
         },
         {
           "id": "parse",
           "name": "解析意向与薪资",
-          "role": "transform"
+          "role": "transform",
+          "refs": [
+            {
+              "file": "app/llm/client.py"
+            }
+          ]
         },
         {
           "id": "out",
           "name": "输出求职信息",
-          "role": "output"
+          "role": "output",
+          "refs": [
+            {
+              "file": "app/api/resume.py"
+            }
+          ]
         }
       ],
       "flow": [
@@ -647,13 +707,13 @@
           "kind": "next"
         }
       ],
-      "confidence": 0.3,
+      "confidence": 0.88,
       "provenance": "ai",
       "tags": [
-        "planned",
+        "sdd",
         "v1-bonus"
       ],
-      "updated_at": "2026-05-19T00:00:00Z"
+      "updated_at": "2026-05-19T08:30:00Z"
     },
     {
       "id": "f-extract-background",
@@ -670,32 +730,62 @@
         {
           "id": "in",
           "name": "接收清洗文本",
-          "role": "input"
+          "role": "input",
+          "refs": [
+            {
+              "file": "app/services/extract_service.py"
+            }
+          ]
         },
         {
           "id": "prompt",
           "name": "构造背景提示",
-          "role": "compute"
+          "role": "compute",
+          "refs": [
+            {
+              "file": "app/llm/prompts.py"
+            }
+          ]
         },
         {
           "id": "call-llm",
           "name": "调用大模型",
-          "role": "side-effect"
+          "role": "side-effect",
+          "refs": [
+            {
+              "file": "app/llm/client.py"
+            }
+          ]
         },
         {
           "id": "parse",
           "name": "解析背景信息",
-          "role": "transform"
+          "role": "transform",
+          "refs": [
+            {
+              "file": "app/llm/client.py"
+            }
+          ]
         },
         {
           "id": "calc-years",
           "name": "计算工作年限",
-          "role": "compute"
+          "role": "compute",
+          "refs": [
+            {
+              "file": "app/services/extract_service.py"
+            }
+          ]
         },
         {
           "id": "out",
           "name": "输出背景信息",
-          "role": "output"
+          "role": "output",
+          "refs": [
+            {
+              "file": "app/api/resume.py"
+            }
+          ]
         }
       ],
       "flow": [
@@ -725,13 +815,13 @@
           "kind": "next"
         }
       ],
-      "confidence": 0.3,
+      "confidence": 0.9,
       "provenance": "ai",
       "tags": [
-        "planned",
+        "sdd",
         "v1-bonus"
       ],
-      "updated_at": "2026-05-19T00:00:00Z"
+      "updated_at": "2026-05-19T08:30:00Z"
     },
     {
       "id": "f-jd-keywords",
@@ -980,7 +1070,7 @@
     {
       "id": "f-result-json",
       "name": "结果聚合输出",
-      "summary": "GET /api/resume/{id}：三段并发抽取后聚合，meta 含耗时/token/缓存命中",
+      "summary": "GET /api/resume/{id}：三段并发抽取（asyncio.gather）后聚合 JSON 响应，含 cache_hit/tokens 元信息",
       "epicId": "scoring",
       "triggers": [
         {
@@ -992,27 +1082,55 @@
         {
           "id": "in",
           "name": "接收结果请求",
-          "role": "input"
+          "role": "input",
+          "refs": [
+            {
+              "file": "app/api/resume.py"
+            }
+          ]
         },
         {
           "id": "gather",
           "name": "汇总各模块输出",
-          "role": "data-read"
+          "role": "data-read",
+          "refs": [
+            {
+              "file": "app/api/resume.py"
+            },
+            {
+              "file": "app/services/resume_store.py"
+            }
+          ]
         },
         {
           "id": "shape",
           "name": "组装响应结构",
-          "role": "transform"
+          "role": "transform",
+          "refs": [
+            {
+              "file": "app/models/resume.py"
+            }
+          ]
         },
         {
           "id": "out",
           "name": "返回 JSON 结果",
-          "role": "output"
+          "role": "output",
+          "refs": [
+            {
+              "file": "app/api/resume.py"
+            }
+          ]
         },
         {
           "id": "fail",
           "name": "返回未找到错误",
-          "role": "error"
+          "role": "error",
+          "refs": [
+            {
+              "file": "app/core/exceptions.py"
+            }
+          ]
         }
       ],
       "flow": [
@@ -1039,12 +1157,12 @@
           "kind": "next"
         }
       ],
-      "confidence": 0.45,
+      "confidence": 0.92,
       "provenance": "ai",
       "tags": [
-        "planned"
+        "sdd"
       ],
-      "updated_at": "2026-05-19T00:00:00Z"
+      "updated_at": "2026-05-19T08:30:00Z"
     },
     {
       "id": "f-cache",
