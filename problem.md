@@ -71,3 +71,47 @@
 - `pyproject.toml`（追加 N818 ignore）
 - `problem.md`（追加本条记录）
 应当达成的效果：B-F 阶段路由层只需 `raise SomeException()` 或 `return APIResponse.ok(data, meta=make_meta(ctx))`，不再手写 dict、不再关心 status code / 日志 / request_id；所有错误统一走 handlers 包装为标准 JSON 信封；FC 部署后日志可直接被阿里云 SLS 索引；token 用量与缓存命中通过 ctx.add_tokens() / ctx.mark_cache_hit() 在调用链中自动累加。
+
+
+问题5：开干 B（PDF 解析 + 上传接口）
+解决方案：B1+B2 合并实现，第一个用户可见的业务闭环跑通。
+- `app/utils/text.py`：清洗管线（NFKC 归一化 + 控制字符去除 + 行内空白合并 + 多换行→双换行 + 行首尾空白去除 + 中英空格规范化），`truncate()` 支持头尾保留 + 中间标记
+- `app/utils/hash.py`：sha256_bytes / sha256_str / short_hash（12 位 hex 给 resume_id）
+- `app/services/pdf_service.py`：pdfplumber 多页抽取，magic bytes 校验，加密/损坏统一抛 PDFParseError，单页异常不中断（warn + 续跑），扫描件阈值 50 字符/页，页数上限 50
+- `app/models/resume.py`：ParseResult 领域对象 + UploadResponse 接口响应
+- `app/services/resume_store.py`：临时存储（module-level dict + asyncio.Lock + TTL），异步接口，C1 阶段无缝替换为 Cache 抽象
+- `app/api/resume.py`：POST /api/resume/upload 三层校验（扩展名 + MIME + magic bytes）+ 大小校验 + 计算 sha256 → 命中复用 resume_id（幂等 + cache_hit=true）→ 解析后落 store → 返回 UploadResponse；OpenAPI 200/400/422 响应示例齐全
+- `app/main.py`：注册 resume.router
+- `samples/gen_sample.py`：reportlab 生成 3 份测试 PDF（multi-page 简历 / 极简 / 损坏）；samples/ 走 .gitignore
+- `tests/test_pdf_service.py`：4 个单测（正常 / 极简 + 扫描件 / 损坏 / 空字节）全过
+
+验收覆盖：
+- 单测 4/4 全过
+- 端到端：正常上传 200 + 2 页 1430 字符 + resume_id 12 位 ✓
+- 同 PDF 重复上传命中缓存（cache_hit=true，resume_id 一致）✓ 幂等性
+- 损坏伪 PDF（content 非法）→ 400 INVALID_FILE_TYPE 文件头不是 PDF ✓
+- 非 PDF 扩展名 → 400 INVALID_FILE_TYPE 类型不支持 ✓
+- 极简 PDF（"hi"）→ 200 + is_scanned_suspect=true ✓
+- ruff format + check 全过
+
+踩坑修正：
+1. uvicorn 启动时缺 python-multipart → 装上后服务起来；A1 安装策略是「按需装」，B 阶段补上 multipart
+2. reportlab 默认字体不支持中文 → sample 改纯英文，避免 text_preview 出现 nnnnn 误导
+3. JSON Patch：refs 字段在规划 step 上不存在，必须用 `add` 而非 `replace`，第一次 patch 失败后修正
+
+codesee sync（增量 patch 模式 A）：
+- f-upload-pdf：planned → 移除，confidence 0.5 → 0.92，6 个 step + 新增 check-magic step + 2 条 flow，refs 全部补到 app/api/resume.py / resume_store.py / handlers.py
+- f-pdf-parse：planned → 移除，confidence 0.45 → 0.9，5 个 step refs 补到 pdf_service.py
+- f-text-clean：planned → 移除，confidence 0.4 → 0.9，5 个 step refs 补到 utils/text.py
+- 应用 33 个 patch op，validate 通过（exit 0，仅遗留的 error 分支覆盖率警告，规划阶段允许）
+
+修改的代码文件：
+- `app/utils/{text,hash}.py`、`app/services/{pdf_service,resume_store}.py`、`app/models/resume.py`、`app/api/resume.py`（新建）
+- `app/main.py`（注册新路由）
+- `tests/test_pdf_service.py`（新建）
+- `samples/gen_sample.py`（新建，gitignore）
+- `pyproject.toml`（asyncio_default_fixture_loop_scope）
+- `.codesee/features.json`（patch 应用，3 个 feature 升级到 implemented）
+- `.codesee/cache/sync-patch.json`（生成）
+- `problem.md`（追加本条记录）
+应当达成的效果：第一个用户可见的业务闭环跑通——POST /api/resume/upload 接收 PDF → 校验 → 解析 → 清洗 → 落临时 store → 返回 resume_id；幂等保证；扫描件检测；统一信封 + cache_hit + request_id 全链路到位。后续 D（LLM 客户端）+ E（信息抽取）可直接消费 resume_store.get(resume_id) 获取 ParseResult。

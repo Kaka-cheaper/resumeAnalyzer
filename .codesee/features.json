@@ -2,7 +2,7 @@
   "version": "0",
   "manifest": {
     "repo": "智能简历分析系统",
-    "generated_at": "2026-05-19T01:00:00Z",
+    "generated_at": "2026-05-19T05:30:00Z",
     "generator": "ai@claude-opus-4.7 via planning+spec",
     "lang": "zh-CN"
   },
@@ -183,32 +183,72 @@
         {
           "id": "recv",
           "name": "接收文件请求",
-          "role": "input"
+          "role": "input",
+          "refs": [
+            {
+              "file": "app/api/resume.py"
+            }
+          ]
         },
         {
           "id": "check-type",
           "name": "校验文件类型",
-          "role": "validation"
+          "role": "validation",
+          "refs": [
+            {
+              "file": "app/api/resume.py"
+            }
+          ]
         },
         {
           "id": "check-size",
           "name": "校验文件大小",
-          "role": "validation"
+          "role": "validation",
+          "refs": [
+            {
+              "file": "app/api/resume.py"
+            }
+          ]
+        },
+        {
+          "id": "check-magic",
+          "name": "校验文件头",
+          "role": "validation",
+          "refs": [
+            {
+              "file": "app/api/resume.py"
+            }
+          ]
         },
         {
           "id": "store",
           "name": "暂存文件",
-          "role": "data-write"
+          "role": "data-write",
+          "refs": [
+            {
+              "file": "app/services/resume_store.py"
+            }
+          ]
         },
         {
           "id": "ok",
           "name": "返回上传 ID",
-          "role": "output"
+          "role": "output",
+          "refs": [
+            {
+              "file": "app/api/resume.py"
+            }
+          ]
         },
         {
           "id": "fail",
           "name": "返回上传错误",
-          "role": "error"
+          "role": "error",
+          "refs": [
+            {
+              "file": "app/core/handlers.py"
+            }
+          ]
         }
       ],
       "flow": [
@@ -231,7 +271,7 @@
         },
         {
           "from": "check-size",
-          "to": "store",
+          "to": "check-magic",
           "kind": "conditional",
           "condition": "大小合规"
         },
@@ -245,14 +285,26 @@
           "from": "store",
           "to": "ok",
           "kind": "next"
+        },
+        {
+          "from": "check-magic",
+          "to": "store",
+          "kind": "conditional",
+          "condition": "%PDF 头有效"
+        },
+        {
+          "from": "check-magic",
+          "to": "fail",
+          "kind": "conditional",
+          "condition": "文件头非法"
         }
       ],
-      "confidence": 0.5,
+      "confidence": 0.92,
       "provenance": "ai",
       "tags": [
-        "planned"
+        "sdd"
       ],
-      "updated_at": "2026-05-19T00:00:00Z"
+      "updated_at": "2026-05-19T05:30:00Z"
     },
     {
       "id": "f-pdf-parse",
@@ -269,27 +321,52 @@
         {
           "id": "load",
           "name": "加载 PDF",
-          "role": "data-read"
+          "role": "data-read",
+          "refs": [
+            {
+              "file": "app/services/pdf_service.py"
+            }
+          ]
         },
         {
           "id": "iter",
           "name": "遍历页面",
-          "role": "compute"
+          "role": "compute",
+          "refs": [
+            {
+              "file": "app/services/pdf_service.py"
+            }
+          ]
         },
         {
           "id": "extract",
           "name": "抽取文本",
-          "role": "transform"
+          "role": "transform",
+          "refs": [
+            {
+              "file": "app/services/pdf_service.py"
+            }
+          ]
         },
         {
           "id": "join",
           "name": "合并多页文本",
-          "role": "transform"
+          "role": "transform",
+          "refs": [
+            {
+              "file": "app/services/pdf_service.py"
+            }
+          ]
         },
         {
           "id": "fail",
           "name": "返回解析失败",
-          "role": "error"
+          "role": "error",
+          "refs": [
+            {
+              "file": "app/core/exceptions.py"
+            }
+          ]
         }
       ],
       "flow": [
@@ -317,12 +394,12 @@
           "kind": "next"
         }
       ],
-      "confidence": 0.45,
+      "confidence": 0.9,
       "provenance": "ai",
       "tags": [
-        "planned"
+        "sdd"
       ],
-      "updated_at": "2026-05-19T00:00:00Z"
+      "updated_at": "2026-05-19T05:30:00Z"
     },
     {
       "id": "f-text-clean",
@@ -339,27 +416,52 @@
         {
           "id": "in",
           "name": "接收原始文本",
-          "role": "input"
+          "role": "input",
+          "refs": [
+            {
+              "file": "app/utils/text.py"
+            }
+          ]
         },
         {
           "id": "strip",
           "name": "去除控制字符",
-          "role": "transform"
+          "role": "transform",
+          "refs": [
+            {
+              "file": "app/utils/text.py"
+            }
+          ]
         },
         {
           "id": "normalize",
           "name": "归一化空白",
-          "role": "transform"
+          "role": "transform",
+          "refs": [
+            {
+              "file": "app/utils/text.py"
+            }
+          ]
         },
         {
           "id": "segment",
           "name": "切分语义段落",
-          "role": "compute"
+          "role": "compute",
+          "refs": [
+            {
+              "file": "app/utils/text.py"
+            }
+          ]
         },
         {
           "id": "out",
           "name": "输出结构化文本",
-          "role": "output"
+          "role": "output",
+          "refs": [
+            {
+              "file": "app/utils/text.py"
+            }
+          ]
         }
       ],
       "flow": [
@@ -384,12 +486,12 @@
           "kind": "next"
         }
       ],
-      "confidence": 0.4,
+      "confidence": 0.9,
       "provenance": "ai",
       "tags": [
-        "planned"
+        "sdd"
       ],
-      "updated_at": "2026-05-19T00:00:00Z"
+      "updated_at": "2026-05-19T05:30:00Z"
     },
     {
       "id": "f-extract-basic",
