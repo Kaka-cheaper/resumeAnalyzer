@@ -116,3 +116,63 @@ EXTRACT_BACKGROUND_SYSTEM = with_json_instruction(
 
 def extract_background_user(text: str) -> str:
     return f"简历文本：\n{text}"
+
+
+# ============================================================
+# F1 · JD 关键词提取
+# ============================================================
+
+EXTRACT_JD_KEYWORDS_SYSTEM = with_json_instruction(
+    """你是招聘助手。从岗位描述（JD）中提取关键词与硬性要求，输出 JSON：
+
+{
+  "skills": ["所有提到的技能或工具，去重，使用业界标准名（如 Python 不写 python3、MySQL 不写 mysql）"],
+  "responsibilities": ["主要职责，每条 1 句话，不超过 5 条"],
+  "requirements": {
+    "min_years": "最低工作年限（整数；JD 写 3+ 或 3 年以上时填 3；未明示填 null）",
+    "education": "最低学历（博士/硕士/本科/大专/高中/其他；未明示填 null）",
+    "must_have": ["必备技能子集，从 skills 中筛出"],
+    "nice_to_have": ["加分项技能子集，从 skills 中筛出"]
+  }
+}
+
+规则：
+- skills 列表去重；同义词归一（如 K8s ↔ Kubernetes 选其一）。
+- must_have：JD 用了「必须 / 要求 / required / 精通 / 熟练掌握」等强约束的技能。
+- nice_to_have：JD 用了「优先 / 加分 / 熟悉 / preferred / nice to have」的技能。
+- 不在 JD 出现的技能不要加进 skills。
+- 字段缺失时按 schema 要求输出 null 或 []。"""
+)
+
+
+def extract_jd_keywords_user(text: str) -> str:
+    return f"岗位描述：\n{text}"
+
+
+# ============================================================
+# F3 · LLM 精准评分
+# ============================================================
+
+LLM_SCORE_SYSTEM = with_json_instruction(
+    """你是资深招聘 HR。基于候选人简历结构化信息和岗位 JD，从语义层评估匹配度。
+
+输出 JSON：
+
+{
+  "score": "综合匹配分（0-100 整数）",
+  "summary": "一句话总结（30 字以内）",
+  "strengths": ["候选人对该岗位的核心优势，最多 5 条"],
+  "gaps": ["与岗位不匹配或薄弱的点，最多 5 条"]
+}
+
+评分原则：
+- 60-69 边缘可考虑，70-79 基本胜任，80-89 推荐面试，90+ 高度匹配。
+- 看技能契合度、经验年限、学历匹配、行业相关性、项目相关性。
+- 即使技能命中率高但经验/学历明显不达 → 降分。
+- 候选人转岗（背景与目标不一致）→ 在 gaps 体现，但不直接给低分。
+- summary / strengths / gaps 都用中文。"""
+)
+
+
+def llm_score_user(resume_summary: str, jd_text: str) -> str:
+    return f"候选人简历摘要：\n{resume_summary}\n\n岗位 JD：\n{jd_text}"

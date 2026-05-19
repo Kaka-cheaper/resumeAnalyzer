@@ -273,3 +273,75 @@ codesee sync（增量 patch 模式 A）：
 - `.codesee/cache/sync-patch.json`（生成）
 - `problem.md`（追加本条记录）
 应当达成的效果：题目「模块二：关键信息提取」必选 + 加分项全部实现；GET /api/resume/{id} 端到端首次 4.6s + 缓存命中 4ms；任一段失败不影响其他段；正则兜底保证 LLM 全失败时基本信息（邮箱/手机号）仍可拿到；工作年限自动计算覆盖 LLM 不准的值；为 F 阶段（JD + 匹配评分）提供齐全的 ResumeAggregate 数据源。
+
+
+问题9：开干 F（JD 关键词 + 启发式评分 + LLM 精准评分 + 融合接口）
+解决方案：F1+F2+F3+F4 一并实现，所有题目必选模块至此齐全（11/14 codesee feature 已 implemented）。
+- `app/models/match.py`：JDKeywords / JDRequirements / SkillBreakdown / ExperienceBreakdown / EducationBreakdown / ScoreBreakdown / MatchResult / JDKeywordsRequest / MatchRequest（含 score_strategy: fusion/heuristic_only/llm_only Literal）
+- `app/llm/prompts.py` 追加：EXTRACT_JD_KEYWORDS_SYSTEM / LLM_SCORE_SYSTEM 业务 prompt
+  - JD：提取技能去重 + 同义词归一 + must/nice 二分判定（明确强约束词）
+  - 评分：HR 视角 0-100 评分准则（60-69 边缘 / 70-79 基本 / 80-89 推荐 / 90+ 高度）+ 中文 summary/strengths/gaps
+- `app/services/jd_service.py`：extract_jd_keywords + get_jd_keywords_by_hash；按 jd_text hash 缓存（前 16 位作 jd_hash）；LLM 失败返回空关键词对象但保 jd_hash 便于上层匹配评分
+- `app/services/match_service.py`：
+  - 学历归一映射表（高中/大专/本科/硕士/博士 + 等价别名 学士/研究生/Bachelor/PhD）+ _edu_level 数值化 + _highest_edu 取最高
+  - 技能归一表（K8s↔Kubernetes / Postgres↔PostgreSQL / Node↔Node.js / Py3↔Python 等 11 条同义词）
+  - _is_skill_hit 双路径：归一集合相交 + 简历全文 substring 兜底（处理多词技能如 "machine learning"）
+  - _score_skills：must 命中率占 80% + nice 命中率占 20%；无 must 时只看 nice；都无返回中性 50
+  - _score_experience：候选 ≥ 要求 = 100；每差 1 年扣 10；无要求 = 70；无候选年限 = 40
+  - _score_education：≥ 要求 = 100；低 1 级 = 70；低 2 级 = 40；低 3+ = 20；无要求 = 70；无候选 = 40
+  - heuristic_score：按 settings.skill/experience/education_weight 归一加权（0.5/0.3/0.2 默认）
+  - llm_score：构造简历摘要（去重避免 token 浪费）+ JSON schema 校验；未配置 / 失败返回 None 自动降级
+  - match_resume：fusion 用 0.6/0.4 加权；heuristic_only 跳过 LLM；llm_only 用 LLM 分；LLM 不可用时融合自动 = 启发式
+  - _heuristic_summary 兜底：LLM 不可用时自动生成 summary/strengths/gaps（含 must_hit/must_miss 解读）
+  - 匹配缓存按 (resume_id, jd_hash, flags_hash) 命中
+- `app/api/jd.py`：POST /api/jd/keywords + OpenAPI example
+- `app/api/match.py`：POST /api/match
+  - JD 解析三分支：jd_hash 命中缓存 / jd_hash 未命中但有 jd_text 兜底 / 仅传 jd_text
+  - 无 jd_text 又开 LLM 评分 → 自动降级 heuristic_only（避免 LLM 没原文可看）
+  - 命中 (resume_id, jd_hash, flags) 评分缓存直接返回
+  - 三段抽取并发 → 构造 ResumeAggregate → 调 match_resume → 写缓存
+  - 缺参数 raise MissingParameterError → 全局 handler 包装为 400
+- `app/main.py`：注册 jd / match 路由（4 条业务路由全在）
+
+测试覆盖（25 个 match 单元 + 98 全套全过）：
+- 学历归一 4 个：变体识别 / 等级排序 / 取最高 / 空列表
+- 技能归一 1 个：6 种别名归一
+- 技能评分 4 个：全命中 80（无 nice）/ 部分命中 73 / 无 JD 关键词中性 50 / K8s 同义词命中
+- 经验评分 5 个：满足 100 / 差 1 年 90 / 差 3 年 70 / 无要求 70 / 无候选 40
+- 学历评分 5 个：相等 100 / 高于 100 / 低 1 级 70 / 低 2 级 40 / 无候选 40
+- 启发式综合 2 个：边界检查 + 完美场景
+- 融合策略 4 个：fusion 组合 / heuristic_only 跳 LLM / LLM 失败降级 / use_llm_score=False 跳 LLM
+
+端到端真实 LLM 验收（用 5 年北大 CS 本科 vs Python 后端 JD）：
+- 上传 cache_hit ✓（同 PDF 复用）
+- JD 关键词提取 1917ms / 615 tokens：抽出 7 个 skills（Python/FastAPI/Django/MySQL/K8s/Redis/消息队列），4 个 must_have，3 个 nice_to_have，min_years=3，education=本科 ✓
+- JD 二次提取 5ms cache_hit=true ✓
+- match fusion 4921ms / 3254 tokens：final=82（heuristic 86 与 LLM 75 按 0.6:0.4 融合 → 81.6 → 82 ✓ 数学正确）
+  - skill_match 73：必备 3/4（Python/FastAPI/MySQL）miss Django，nice 2/3（K8s/Redis）
+  - experience 100（5 ≥ 3）
+  - education 100（本科 = 本科）
+  - LLM strengths 5 条 + gaps 5 条（中文，HR 视角）
+- match 二次 5ms cache_hit=true（评分缓存命中，零 LLM 成本）✓
+- match heuristic_only 6ms：跳过 LLM，final=86=heuristic_total，summary 兜底 "高度匹配（必备命中 3/4）"
+- 缺 jd_text 与 jd_hash → 400 MISSING_PARAMETER ✓
+
+收尾：
+- 4 ruff lint 错误自动修（unused import + import sort），全过
+- pytest 单元 98/98（含 F 新增 25），集成 3/3（D 阶段已验）
+- features.json：3 个 feature 升级（f-jd-keywords/f-match-score/f-ai-score），共 34 op，validate exit 0
+- codesee 整体进度 **11/14 implemented**，剩 3 个 planned：
+  - f-frontend-upload / f-frontend-result（deferred，本期不做）
+  - f-deploy（H1 阶段做）
+
+修改的代码文件：
+- `app/models/match.py`（新建）
+- `app/llm/prompts.py`（追加 JD/评分 prompt）
+- `app/services/{jd_service,match_service}.py`（新建）
+- `app/api/{jd,match}.py`（新建）
+- `app/main.py`（注册路由）
+- `tests/test_match_service.py`（新建 25 个单测）
+- `scripts/codesee_status.py`（新建工具）
+- `.codesee/features.json`（patch 应用，3 个 feature 升级）
+- `.codesee/cache/sync-patch.json`（生成）
+- `problem.md`（追加本条记录）
+应当达成的效果：题目「模块三：简历评分与匹配」必选 + 加分项（LLM 精准评分）全部实现；启发式（73.3% 用 Python 通用决策树）+ LLM（语义级 HR 评估）双层评分按权重融合；缓存层全链路命中（PDF 解析 / 信息抽取三段 / JD 关键词 / 匹配评分）；后续 G/H 阶段可专注于测试收口和部署。

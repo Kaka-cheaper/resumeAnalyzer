@@ -2,7 +2,7 @@
   "version": "0",
   "manifest": {
     "repo": "智能简历分析系统",
-    "generated_at": "2026-05-19T08:30:00Z",
+    "generated_at": "2026-05-19T09:30:00Z",
     "generator": "ai@claude-opus-4.7 via planning+spec",
     "lang": "zh-CN"
   },
@@ -838,37 +838,72 @@
         {
           "id": "in",
           "name": "接收岗位描述",
-          "role": "input"
+          "role": "input",
+          "refs": [
+            {
+              "file": "app/api/jd.py"
+            }
+          ]
         },
         {
           "id": "validate",
           "name": "校验文本非空",
-          "role": "validation"
+          "role": "validation",
+          "refs": [
+            {
+              "file": "app/models/match.py"
+            }
+          ]
         },
         {
           "id": "prompt",
           "name": "构造提取提示",
-          "role": "compute"
+          "role": "compute",
+          "refs": [
+            {
+              "file": "app/llm/prompts.py"
+            }
+          ]
         },
         {
           "id": "call-llm",
           "name": "调用大模型",
-          "role": "side-effect"
+          "role": "side-effect",
+          "refs": [
+            {
+              "file": "app/llm/client.py"
+            }
+          ]
         },
         {
           "id": "parse",
           "name": "解析关键词列表",
-          "role": "transform"
+          "role": "transform",
+          "refs": [
+            {
+              "file": "app/services/jd_service.py"
+            }
+          ]
         },
         {
           "id": "out",
           "name": "返回关键词",
-          "role": "output"
+          "role": "output",
+          "refs": [
+            {
+              "file": "app/api/jd.py"
+            }
+          ]
         },
         {
           "id": "fail",
           "name": "返回提取失败",
-          "role": "error"
+          "role": "error",
+          "refs": [
+            {
+              "file": "app/core/exceptions.py"
+            }
+          ]
         }
       ],
       "flow": [
@@ -905,17 +940,17 @@
           "kind": "next"
         }
       ],
-      "confidence": 0.45,
+      "confidence": 0.92,
       "provenance": "ai",
       "tags": [
-        "planned"
+        "sdd"
       ],
-      "updated_at": "2026-05-19T00:00:00Z"
+      "updated_at": "2026-05-19T09:30:00Z"
     },
     {
       "id": "f-match-score",
       "name": "匹配度评分",
-      "summary": "技能命中率 + 经验年限差 + 学历枚举，加权 0.5/0.3/0.2 出综合分",
+      "summary": "技能命中（同义词归一+子串兜底）+ 经验年限差 + 学历枚举映射，按 0.5/0.3/0.2 加权综合分；匹配缓存按 (resume_id, jd_hash, flags) 命中",
       "epicId": "scoring",
       "triggers": [
         {
@@ -927,32 +962,65 @@
         {
           "id": "in",
           "name": "接收简历与岗位",
-          "role": "input"
+          "role": "input",
+          "refs": [
+            {
+              "file": "app/api/match.py"
+            }
+          ]
         },
         {
           "id": "load-resume",
           "name": "读取简历信息",
-          "role": "data-read"
+          "role": "data-read",
+          "refs": [
+            {
+              "file": "app/services/resume_store.py"
+            },
+            {
+              "file": "app/services/extract_service.py"
+            }
+          ]
         },
         {
           "id": "skill-hit",
           "name": "计算技能命中率",
-          "role": "compute"
+          "role": "compute",
+          "refs": [
+            {
+              "file": "app/services/match_service.py"
+            }
+          ]
         },
         {
           "id": "exp-score",
           "name": "评估经验相关性",
-          "role": "compute"
+          "role": "compute",
+          "refs": [
+            {
+              "file": "app/services/match_service.py"
+            }
+          ]
         },
         {
           "id": "weighted",
           "name": "加权综合得分",
-          "role": "compute"
+          "role": "compute",
+          "refs": [
+            {
+              "file": "app/services/match_service.py"
+            }
+          ]
         },
         {
           "id": "out",
           "name": "返回匹配评分",
-          "role": "output"
+          "role": "output",
+          "refs": [
+            {
+              "file": "app/api/match.py"
+            }
+          ]
         }
       ],
       "flow": [
@@ -982,17 +1050,17 @@
           "kind": "next"
         }
       ],
-      "confidence": 0.4,
+      "confidence": 0.92,
       "provenance": "ai",
       "tags": [
-        "planned"
+        "sdd"
       ],
-      "updated_at": "2026-05-19T00:00:00Z"
+      "updated_at": "2026-05-19T09:30:00Z"
     },
     {
       "id": "f-ai-score",
       "name": "AI 精准评分",
-      "summary": "MiMo 输出 score+summary+strengths+gaps，与启发式分按 0.6/0.4 融合（加分项）",
+      "summary": "MiMo 输出 score+summary+strengths+gaps，与启发式分按 heuristic_weight:llm_weight 加权融合；LLM 失败自动降级到纯启发式",
       "epicId": "scoring",
       "triggers": [
         {
@@ -1004,32 +1072,62 @@
         {
           "id": "in",
           "name": "接收简历与岗位",
-          "role": "input"
+          "role": "input",
+          "refs": [
+            {
+              "file": "app/services/match_service.py"
+            }
+          ]
         },
         {
           "id": "prompt",
           "name": "构造评分提示",
-          "role": "compute"
+          "role": "compute",
+          "refs": [
+            {
+              "file": "app/llm/prompts.py"
+            }
+          ]
         },
         {
           "id": "call-llm",
           "name": "调用大模型评分",
-          "role": "side-effect"
+          "role": "side-effect",
+          "refs": [
+            {
+              "file": "app/llm/client.py"
+            }
+          ]
         },
         {
           "id": "parse",
           "name": "解析分数与理由",
-          "role": "transform"
+          "role": "transform",
+          "refs": [
+            {
+              "file": "app/services/match_service.py"
+            }
+          ]
         },
         {
           "id": "merge",
           "name": "融合规则分与AI分",
-          "role": "compute"
+          "role": "compute",
+          "refs": [
+            {
+              "file": "app/services/match_service.py"
+            }
+          ]
         },
         {
           "id": "out",
           "name": "返回综合评分",
-          "role": "output"
+          "role": "output",
+          "refs": [
+            {
+              "file": "app/api/match.py"
+            }
+          ]
         }
       ],
       "flow": [
@@ -1059,13 +1157,13 @@
           "kind": "next"
         }
       ],
-      "confidence": 0.3,
+      "confidence": 0.9,
       "provenance": "ai",
       "tags": [
-        "planned",
+        "sdd",
         "v1-bonus"
       ],
-      "updated_at": "2026-05-19T00:00:00Z"
+      "updated_at": "2026-05-19T09:30:00Z"
     },
     {
       "id": "f-result-json",
