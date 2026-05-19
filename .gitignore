@@ -54,3 +54,7 @@ deploy/.s/
 
 # 题目原文不进 git（本地保留供参考）
 题目详情.md
+
+
+# 面试个人准备文档（仅本地，不进 git）
+docs/interview-prep.md
