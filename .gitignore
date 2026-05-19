@@ -50,3 +50,7 @@ s.bak.yaml
 python/
 deploy/_scaffold/
 deploy/.s/
+
+
+# 题目原文不进 git（本地保留供参考）
+题目详情.md
