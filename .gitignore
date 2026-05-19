@@ -58,3 +58,4 @@ deploy/.s/
 
 # 面试个人准备文档（仅本地，不进 git）
 docs/interview-prep.md
+docs/interview-code-walkthrough.md
