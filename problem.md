@@ -22,3 +22,23 @@
 - `.codesee/cache/sync-patch.json`（新建）
 - `problem.md`（追加本条记录）
 应当达成的效果：用户在动手写代码前已锁定完整设计与拿分路径——评分对齐已映射到具体 FR 与 task；24h 时间盒已切到任务粒度；前端不实现但接口契约已冻结，后续接前端零返工；codesee 画布同步反映新决策（架构选型、并发策略、缓存抽象等），所有 feature 仍标 planned，等代码落地后 sync 升级为 implemented。
+
+
+问题3：开干 A1（项目骨架与健康检查）
+解决方案：按 tasks.md 阶段 A1 落地 FastAPI 项目最小可运行骨架。
+- 写 `requirements.txt` 锁死全套依赖版本（fastapi 0.115 / uvicorn 0.30 / pdfplumber 0.11 / openai 1.51 / pydantic 2.9 / pydantic-settings 2.5 / tenacity 9.0 / redis 5.1 / pytest 8.3 / ruff 0.6）
+- 写 `pyproject.toml` 配 ruff（line-length=100，开 E/W/F/I/B/C4/UP/N）+ pytest（asyncio_mode=auto）
+- 写 `.env.example` 列 16 个环境变量（含 MIMO_* / CACHE_BACKEND / 评分权重 / CORS）
+- 写 `.gitignore` 屏蔽 venv、__pycache__、samples、*.pdf、.env、.s/、.codesee/cache/
+- 创建 9 个包：app/{api,core,services,models,llm,cache,utils} + tests/，每个含 __init__.py（doc 注释说明分层职责）
+- 写 `app/main.py`：FastAPI 实例化（含中文 title/description），CORS 中间件（默认 allow_origins=["*"]，从 CORS_ORIGINS 环境变量解析），注册 health 路由，根路径 `/` 返回演示入口
+- 写 `app/api/health.py`：APIRouter 实现 `GET /health`，返回 `{code,message,data:{status,version},meta:{elapsed_ms,request_id}}` 形状（A1 用 dict 兜住，A2 再抽象到 core/response.py）
+- 验收：建 venv → 装 fastapi/uvicorn/httpx → 启动 uvicorn 监听 127.0.0.1:8765 → httpx 请求 `/health` 返回 200 + 期望响应 + 根路径 200 + Swagger UI 可达 + OpenAPI schema 已含 /health
+修改的代码文件：
+- `requirements.txt`、`pyproject.toml`、`.env.example`、`.gitignore`（新建）
+- `app/__init__.py`、`app/main.py`（新建）
+- `app/api/__init__.py`、`app/api/health.py`（新建）
+- `app/{core,services,models,llm,cache,utils}/__init__.py`（新建占位）
+- `tests/__init__.py`（新建占位）
+- `problem.md`（追加本条记录）
+应当达成的效果：项目骨架可运行，FastAPI 启动正常，健康检查返回标准信封，Swagger UI 与 OpenAPI 路径已就绪；后续 A2 阶段可在此基础上替换响应封装、注入异常体系；codesee features.json 暂不更新（骨架属于非业务功能改动，所有 planned feature 都未真正落地实现）。

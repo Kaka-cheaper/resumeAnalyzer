@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# 虚拟环境
+.venv/
+venv/
+env/
+
+# 环境配置
+.env
+.env.*.local
+*.env.bak
+
+# 简历样本（隐私）
+samples/
+*.pdf
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# 日志与临时
+*.log
+logs/
+tmp/
+
+# Serverless Devs
+.s/
+s.bak.yaml
+
+# CodeSee 缓存（已被 .codesee/.gitignore 忽略，这里二次保险）
+.codesee/cache/
