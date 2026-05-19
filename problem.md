@@ -159,3 +159,55 @@ codesee sync（增量 patch）：
 - `.codesee/cache/sync-patch.json`（生成）
 - `problem.md`（追加本条记录）
 应当达成的效果：本期 MVP 默认 memory 后端（零依赖），FC 部署一条命令直接跑；如要跨实例共享或加缓存层，只需改 CACHE_BACKEND=redis + REDIS_URL，应用代码零改动；后续 D/E/F 阶段所有 LLM 抽取与评分结果都可以走同一个 Cache 实例，按 CacheKeys 命名空间区分。
+
+
+问题7：开干 D（MiMo LLM 客户端封装）+ 真实 LLM 连通性验证
+解决方案：
+连通性确认（先做）：
+- `scripts/check_llm.py`：3 段连通性自检脚本（基础对话 / JSON 模式 / 异步客户端），不打印 API key（mask 显示 prefix...suffix），可任意时间手动跑
+- `scripts/probe_models.py`：探测代理服务支持的 model 列表（一次性，已删除）
+- 发现用户 .env 配的 base_url 是第三方代理 `mimo2api-trt7.onrender.com/v1`（不是 Novita），可用模型 id 不带 `xiaomimimo/` 前缀
+- 修正 `.env` 的 MIMO_MODEL：`xiaomimimo/mimo-v2-flash` → `mimo-v2-flash`（不读 API_KEY，按 safety 规则）
+- 复跑 check_llm.py：3/3 全过，基础对话 1714ms / JSON 模式 2226ms / 异步 1341ms
+
+D 阶段实现：
+- `app/llm/schemas.py`：TokenUsage（prompt/completion/total tokens + latency_ms + retried + model）+ PingResponse（连通性测试用）
+- `app/llm/prompts.py`：JSON_OUTPUT_INSTRUCTION 通用 JSON 输出约束 + with_json_instruction() 拼接工具，E 阶段会在此填业务 prompt
+- `app/llm/client.py` MiMoClient 主体（约 280 行）：
+  - 构造：从 settings 读默认值；api_key="" 显式被尊重（用于无 key 路径测试，bug 修正：原 fallback 逻辑会从 settings 二次读取）
+  - chat()：普通对话，可配 max_tokens / temperature
+  - chat_json()：三层 JSON 解析兜底（直接 json.loads → markdown ```json``` 剥壳 → 正则抓 {...}），可选 schema 参数做 Pydantic 校验
+  - 重试：tenacity AsyncRetrying，指数退避 1s/2s/4s（max=8s），retry_if_exception_type 仅在 APITimeoutError/APIConnectionError/httpx.TimeoutException/httpx.ConnectError 上重试，max_retries 从 settings 读
+  - 异常映射：APITimeoutError → LLMTimeoutError；RateLimitError → LLMRateLimitedError；AuthenticationError/BadRequestError/APIConnectionError/Unknown → LLMError；BadRequest 不重试（业务参数错）
+  - 用量记录：prompt_tokens / completion_tokens / total_tokens / latency_ms / model / retried 全部回传到 TokenUsage，便于路由层 ctx.add_tokens() 累加
+  - 隐私：日志只记 prompt_hash（sha256 前 12 位）+ prompt_len，**绝不打印 prompt 内容或 API key**；失败时只记 err_type / err_msg[:200]
+  - 单例：get_llm_client() / reset_llm_client()（测试用）
+
+测试覆盖：
+- `tests/test_llm_client.py`：20 个单元测试全过（不依赖真实 LLM，全部 mock chat.completions.create）
+  - 配置：has key / no key / chat without key raises
+  - 基础调用：chat 返回 + 用量 + 参数透传 + JSON 模式不开 response_format
+  - JSON 解析：clean / markdown 剥壳 / 自由文本兜底 / 无法解析 raise / 空响应 raise / response_format 透传
+  - Schema：通过 / 校验失败 raise
+  - 异常映射：timeout / rate_limit / auth → 各自异常
+  - 重试：可重试异常重试一次后成功 / 重试耗尽 raise / 非可重试异常不重试（BadRequest 仅调一次）
+  - 边界：empty content raise
+
+- `tests/test_llm_integration.py`：3 个集成测试（默认 skip，RUN_INTEGRATION=1 启用），用真实 MiMo 验证：
+  - test_real_chat：基础对话 + 用量 > 0
+  - test_real_chat_json：JSON 模式抽取
+  - test_real_chat_json_with_schema：Pydantic schema 校验通过（修一次：原 prompt 没显式指定字段名，模型用了中文 key 导致 schema fail；改 prompt 显式说"字段名必须是英文 name 和 phone"后稳定通过）
+
+收尾：
+- pytest 单元 50/50 全过（含 D 新增 20 个，加上 C 阶段 30 个）
+- ruff format（3 文件 reformat）+ check 全过
+- features.json 不动：LLM 客户端是基础设施层，不直接对应业务 feature；E/F 阶段升级 f-extract-* / f-match-score 时会通过 step.refs 引用 app/llm/client.py
+- 删除一次性脚本 scripts/probe_models.py；保留 scripts/check_llm.py 作为部署后随时可跑的连通性自检
+
+修改的代码文件：
+- `app/llm/{client,schemas,prompts}.py`（新建）
+- `tests/test_llm_client.py`、`tests/test_llm_integration.py`（新建）
+- `scripts/check_llm.py`（新建）
+- `.env`（用户配置，已被 .gitignore，本次未读取 API_KEY 内容，仅替换 MIMO_MODEL 行）
+- `problem.md`（追加本条记录）
+应当达成的效果：E/F 阶段写抽取与评分时直接 `from app.llm.client import get_llm_client; client.chat_json(system=..., user=..., schema=ResumeBasicSchema)` 即可拿到解析后的 Pydantic 实例 + 用量数据，所有重试/超时/降级/隐私已在客户端内置；调用方零关心底层细节。集成测试证明真实 MiMo 在 1-2s 延迟下稳定可用，JSON 模式 + schema 路径可工作（前提：业务 prompt 显式声明字段名）。
