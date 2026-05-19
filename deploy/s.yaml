@@ -34,7 +34,7 @@ resources:
       timeout: 60
       instanceConcurrency: 5
       customContainerConfig:
-        image: crpi-jxpuwerawve4hybu.cn-beijing.personal.cr.aliyuncs.com/resume-analyzer/xinghuo:v0.1.0
+        image: crpi-jxpuwerawve4hybu.cn-beijing.personal.cr.aliyuncs.com/resume-analyzer/xinghuo:v0.1.1
         port: 9000
         # 这两个个人版 ACR 通常不用 ACR EE 的 instanceID
       environmentVariables:

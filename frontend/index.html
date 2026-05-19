@@ -1,0 +1,1006 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>智能简历分析 · AI 赋能的招聘助手</title>
+    <meta
+      name="description"
+      content="上传 PDF 简历，自动抽取关键信息并对岗位匹配度进行 AI 评分。"
+    />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              ink: {
+                50: "#0a0a0a",
+                100: "#161616",
+                200: "#1f1f1f",
+                300: "#2e2e2e",
+                400: "#52525b",
+                500: "#71717a",
+                600: "#a3a3a8",
+                700: "#d4d4d4",
+                800: "#e7e5e4",
+                900: "#f5f5f4",
+                950: "#fafaf9",
+              },
+              brand: {
+                400: "#fb923c",
+                500: "#f97316",
+                600: "#ea580c",
+              },
+              accent: { 400: "#e879f9", 500: "#d946ef", 600: "#c026d3" },
+            },
+          },
+        },
+      };
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        background-color: #08080d;
+        color: #e7e5e4;
+        font-family:
+          "Inter", ui-sans-serif, system-ui, "PingFang SC",
+          "Microsoft YaHei", "Source Han Sans CN", sans-serif;
+        font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        background-attachment: fixed;
+        background-size: 200px 200px;
+        color-scheme: dark;
+      }
+      .mono {
+        font-family: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+      }
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: rgb(255 255 255 / 0.08);
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgb(255 255 255 / 0.16);
+      }
+      ::selection {
+        background: rgb(249 115 22 / 0.35);
+        color: #fafaf9;
+      }
+      .aurora-bg {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        overflow: hidden;
+      }
+      .aurora-bg::before,
+      .aurora-bg::after {
+        content: "";
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(100px);
+        will-change: transform, opacity;
+      }
+      .aurora-bg::before {
+        width: 760px;
+        height: 760px;
+        top: -240px;
+        left: -180px;
+        background: radial-gradient(
+          circle at 30% 30%,
+          rgb(249 115 22 / 0.45) 0%,
+          rgb(236 72 153 / 0.28) 40%,
+          transparent 70%
+        );
+        animation: auroraDrift 18s ease-in-out infinite;
+      }
+      .aurora-bg::after {
+        width: 880px;
+        height: 880px;
+        bottom: -260px;
+        right: -220px;
+        background: radial-gradient(
+          circle at 70% 70%,
+          rgb(139 92 246 / 0.35) 0%,
+          rgb(99 102 241 / 0.22) 45%,
+          transparent 75%
+        );
+        animation: auroraDrift 28s ease-in-out infinite reverse;
+      }
+      .card {
+        background: rgb(20 20 23 / 0.72);
+        backdrop-filter: blur(12px) saturate(140%);
+        -webkit-backdrop-filter: blur(12px) saturate(140%);
+        border: 1px solid rgb(255 255 255 / 0.06);
+        border-radius: 0.75rem;
+        box-shadow:
+          0 0 0 1px rgb(255 255 255 / 0.02) inset,
+          0 8px 32px -12px rgb(0 0 0 / 0.6);
+        transition: border-color 200ms ease, box-shadow 200ms ease;
+      }
+      .card:hover {
+        border-color: rgb(255 255 255 / 0.12);
+      }
+      .btn-primary {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.375rem;
+        padding: 0.6rem 1.1rem;
+        border-radius: 0.5rem;
+        color: #fff;
+        font-size: 0.9rem;
+        font-weight: 500;
+        background: linear-gradient(135deg, #f97316 0%, #ec4899 100%);
+        box-shadow:
+          0 0 0 1px rgb(255 255 255 / 0.08) inset,
+          0 4px 14px -2px rgb(249 115 22 / 0.4);
+        cursor: pointer;
+        transition: all 150ms ease;
+        border: none;
+      }
+      .btn-primary:hover:not(:disabled) {
+        background: linear-gradient(135deg, #fb923c 0%, #f472b6 100%);
+        box-shadow:
+          0 0 0 1px rgb(255 255 255 / 0.14) inset,
+          0 6px 20px -2px rgb(249 115 22 / 0.55);
+      }
+      .btn-primary:active:not(:disabled) {
+        transform: translateY(1px);
+      }
+      .btn-primary:disabled {
+        background: rgb(255 255 255 / 0.06);
+        color: rgb(255 255 255 / 0.3);
+        box-shadow: none;
+        cursor: not-allowed;
+      }
+      .btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.375rem;
+        padding: 0.55rem 1rem;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        background: rgb(255 255 255 / 0.04);
+        color: rgb(245 245 244 / 0.92);
+        border: 1px solid rgb(255 255 255 / 0.08);
+        cursor: pointer;
+        transition: all 150ms ease;
+      }
+      .btn-secondary:hover:not(:disabled) {
+        background: rgb(255 255 255 / 0.08);
+        border-color: rgb(255 255 255 / 0.16);
+      }
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.125rem 0.5rem;
+        border-radius: 0.375rem;
+        font-size: 0.7rem;
+        font-weight: 500;
+        background: rgb(255 255 255 / 0.06);
+        color: rgb(245 245 244 / 0.78);
+        border: 1px solid rgb(255 255 255 / 0.08);
+      }
+      .chip-success {
+        background: rgb(16 185 129 / 0.12);
+        color: rgb(110 231 183);
+        border-color: rgb(16 185 129 / 0.24);
+      }
+      .chip-danger {
+        background: rgb(244 63 94 / 0.12);
+        color: rgb(253 164 175);
+        border-color: rgb(244 63 94 / 0.24);
+      }
+      .chip-warm {
+        background: rgb(184 137 90 / 0.14);
+        color: rgb(224 201 168);
+        border-color: rgb(184 137 90 / 0.28);
+      }
+      .chip-accent {
+        background: rgb(217 70 239 / 0.12);
+        color: rgb(240 171 252);
+        border-color: rgb(217 70 239 / 0.24);
+      }
+      .brand-mark {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        background: linear-gradient(
+          135deg,
+          #fb923c 0%,
+          #f97316 30%,
+          #ec4899 65%,
+          #8b5cf6 100%
+        );
+        box-shadow:
+          0 0 0 1px rgb(255 255 255 / 0.12) inset,
+          0 4px 16px -2px rgb(249 115 22 / 0.4),
+          0 4px 16px -2px rgb(139 92 246 / 0.3);
+        position: relative;
+        overflow: hidden;
+        flex-shrink: 0;
+      }
+      .brand-mark::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(
+          circle at 30% 25%,
+          rgb(255 255 255 / 0.45) 0%,
+          transparent 50%
+        );
+      }
+      .shimmer-bar {
+        height: 2px;
+        background: linear-gradient(
+          110deg,
+          transparent 30%,
+          rgb(251 146 60) 45%,
+          rgb(236 72 153) 55%,
+          rgb(139 92 246) 65%,
+          transparent 70%
+        );
+        background-size: 200% 100%;
+        animation: shimmer 2s linear infinite;
+      }
+      .shimmer-skeleton {
+        background: linear-gradient(
+          110deg,
+          rgb(255 255 255 / 0.04) 30%,
+          rgb(255 255 255 / 0.1) 50%,
+          rgb(255 255 255 / 0.04) 70%
+        );
+        background-size: 200% 100%;
+        animation: shimmer 2s linear infinite;
+      }
+      .dropzone {
+        border: 2px dashed rgb(255 255 255 / 0.12);
+        border-radius: 0.75rem;
+        padding: 2.5rem 2rem;
+        text-align: center;
+        background: rgb(255 255 255 / 0.02);
+        transition: all 200ms ease;
+        cursor: pointer;
+      }
+      .dropzone:hover,
+      .dropzone.is-dragover {
+        border-color: rgb(249 115 22 / 0.5);
+        background: rgb(249 115 22 / 0.04);
+      }
+      .score-ring {
+        background: conic-gradient(
+          from 0deg,
+          #f97316 0%,
+          #ec4899 var(--p, 0%),
+          rgb(255 255 255 / 0.08) var(--p, 0%) 100%
+        );
+        border-radius: 50%;
+        padding: 4px;
+        transition: background 600ms ease;
+      }
+      .section-title {
+        font-size: 0.7rem;
+        font-weight: 500;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: rgb(245 245 244 / 0.4);
+      }
+      .topbar-shimmer {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 50;
+        pointer-events: none;
+      }
+      @keyframes auroraDrift {
+        0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.7; }
+        33% { transform: translate3d(40px, -30px, 0) scale(1.1); opacity: 0.85; }
+        66% { transform: translate3d(-30px, 40px, 0) scale(0.95); opacity: 0.6; }
+      }
+      @keyframes shimmer {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+      }
+      @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .fade-in-up { animation: fadeInUp 280ms ease-out; }
+      input, textarea {
+        background: rgb(255 255 255 / 0.04);
+        border: 1px solid rgb(255 255 255 / 0.08);
+        color: #f5f5f4;
+        border-radius: 0.5rem;
+        padding: 0.6rem 0.8rem;
+        outline: none;
+        transition: all 150ms ease;
+        font-family: inherit;
+        width: 100%;
+      }
+      input:focus, textarea:focus {
+        border-color: rgb(249 115 22 / 0.5);
+        background: rgb(255 255 255 / 0.06);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="aurora-bg"></div>
+    <div id="topbar" class="topbar-shimmer hidden">
+      <div class="shimmer-bar"></div>
+    </div>
+
+    <div class="relative" style="z-index: 1">
+      <header
+        class="border-b border-white/[0.04] backdrop-blur-xl bg-ink-50/70 sticky top-0 z-40"
+      >
+        <div class="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="brand-mark"></div>
+            <div>
+              <div class="text-sm font-semibold tracking-tight text-ink-900">
+                智能简历分析
+              </div>
+              <div class="text-[11px] text-ink-500 tracking-tight">
+                AI 赋能的招聘助手 · 阿里云 FC + 小米 MiMo
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <a
+              id="repo-link"
+              href="https://github.com/Kaka-cheaper/resumeAnalyzer"
+              target="_blank"
+              class="text-[11px] px-2.5 py-1.5 rounded-md text-ink-500 hover:text-ink-900 hover:bg-white/5 transition"
+            >
+              GitHub ↗
+            </a>
+          </div>
+        </div>
+      </header>
+
+      <main class="max-w-6xl mx-auto px-6 py-10 space-y-6">
+        <section class="space-y-3">
+          <h1
+            class="text-4xl md:text-5xl font-semibold tracking-tight text-ink-900 leading-tight"
+          >
+            把<span
+              class="bg-gradient-to-r from-brand-400 via-pink-400 to-purple-400 bg-clip-text text-transparent"
+              >简历筛选</span
+            >
+            <br />
+            从一小时压到一分钟。
+          </h1>
+          <p class="text-ink-600 text-sm md:text-base leading-relaxed max-w-2xl">
+            上传 PDF
+            简历，自动抽取姓名、电话、工作经历、教育背景；输入岗位描述，启发式 +
+            LLM 双层评分给出匹配度与改进建议。
+          </p>
+        </section>
+
+        <section class="card p-6 space-y-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span class="chip chip-warm">第 1 步</span>
+              <h2 class="text-base font-semibold tracking-tight text-ink-900">
+                上传简历
+              </h2>
+            </div>
+            <div id="resume-id-pill" class="hidden">
+              <span class="chip chip-success mono" id="resume-id-text"></span>
+            </div>
+          </div>
+
+          <div id="dropzone" class="dropzone">
+            <input
+              id="file-input"
+              type="file"
+              accept="application/pdf,.pdf"
+              class="hidden"
+            />
+            <div class="space-y-2">
+              <div class="text-3xl">📄</div>
+              <div class="text-sm text-ink-700">
+                <span class="font-medium text-ink-900">点击选择 PDF</span>
+                或拖拽到此处
+              </div>
+              <div class="text-[11px] text-ink-500">单个文件，≤ 10 MB</div>
+            </div>
+          </div>
+
+          <div id="upload-result" class="hidden space-y-2"></div>
+        </section>
+
+        <section
+          id="extract-section"
+          class="card p-6 space-y-4 hidden fade-in-up"
+        >
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span class="chip chip-warm">第 2 步</span>
+              <h2 class="text-base font-semibold tracking-tight text-ink-900">
+                结构化信息
+              </h2>
+            </div>
+            <div
+              class="flex items-center gap-2 text-[11px] text-ink-500"
+              id="extract-meta"
+            ></div>
+          </div>
+          <div id="extract-skeleton" class="space-y-3 hidden">
+            <div class="shimmer-skeleton h-4 w-1/3 rounded"></div>
+            <div class="shimmer-skeleton h-4 w-1/2 rounded"></div>
+            <div class="shimmer-skeleton h-4 w-2/3 rounded"></div>
+            <div class="shimmer-skeleton h-20 w-full rounded"></div>
+          </div>
+          <div id="extract-content" class="space-y-5 hidden"></div>
+        </section>
+
+        <section
+          id="match-section"
+          class="card p-6 space-y-4 hidden fade-in-up"
+        >
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span class="chip chip-warm">第 3 步</span>
+              <h2 class="text-base font-semibold tracking-tight text-ink-900">
+                岗位匹配评分
+              </h2>
+            </div>
+          </div>
+
+          <div class="space-y-3">
+            <div class="section-title">岗位描述（JD）</div>
+            <textarea
+              id="jd-input"
+              rows="6"
+              placeholder="粘贴或输入完整的岗位描述，包含职责、技能要求、年限、学历..."
+            ></textarea>
+            <div class="flex items-center gap-3 flex-wrap">
+              <button id="match-btn" class="btn-primary" disabled>
+                <span>🎯 计算匹配度</span>
+              </button>
+              <label
+                class="text-xs text-ink-500 flex items-center gap-2 cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  id="use-llm"
+                  checked
+                  class="accent-brand-500"
+                  style="width: auto"
+                />
+                使用 AI 精准评分（更慢但更准）
+              </label>
+              <button
+                id="sample-jd-btn"
+                class="text-xs text-ink-500 hover:text-ink-900 transition ml-auto"
+              >
+                填入示例 JD
+              </button>
+            </div>
+          </div>
+
+          <div id="match-skeleton" class="hidden space-y-3 pt-2">
+            <div class="shimmer-skeleton h-32 w-full rounded"></div>
+            <div class="shimmer-skeleton h-20 w-full rounded"></div>
+          </div>
+          <div id="match-result" class="space-y-4 hidden"></div>
+        </section>
+
+        <div
+          id="error-banner"
+          class="hidden card p-4 fade-in-up"
+          style="background: rgb(244 63 94 / 0.06); border-color: rgb(244 63 94 / 0.24);"
+        >
+          <div class="flex items-start gap-3">
+            <div class="text-rose-300 text-lg">⚠</div>
+            <div class="flex-1 space-y-1 min-w-0">
+              <div
+                class="text-sm font-medium text-rose-200"
+                id="error-title"
+              ></div>
+              <div class="text-xs text-rose-300/70" id="error-detail"></div>
+            </div>
+            <button
+              class="text-rose-300/60 hover:text-rose-200 transition"
+              onclick="document.getElementById('error-banner').classList.add('hidden')"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+
+        <footer class="text-center text-[11px] text-ink-500 pt-8 pb-4">
+          <span class="mono">resume-analyzer v0.1</span> ·
+          <span>FastAPI + 小米 MiMo + 阿里云函数计算</span>
+        </footer>
+      </main>
+    </div>
+
+    <script>
+      const API_BASE =
+        window.RESUME_API_BASE ||
+        "https://resume-analyzer-lqemqaynnr.cn-beijing.fcapp.run";
+      const REPO_URL =
+        window.RESUME_REPO_URL ||
+        "https://github.com/Kaka-cheaper/resumeAnalyzer";
+      if (REPO_URL) {
+        document.getElementById("repo-link").href = REPO_URL;
+      }
+
+      let currentResumeId = null;
+      let inflightCount = 0;
+      function showProgress() {
+        inflightCount++;
+        document.getElementById("topbar").classList.remove("hidden");
+      }
+      function hideProgress() {
+        inflightCount = Math.max(0, inflightCount - 1);
+        if (inflightCount === 0)
+          document.getElementById("topbar").classList.add("hidden");
+      }
+      function showError(title, detail) {
+        document.getElementById("error-title").textContent = title;
+        document.getElementById("error-detail").textContent = detail || "";
+        document.getElementById("error-banner").classList.remove("hidden");
+      }
+      function clearError() {
+        document.getElementById("error-banner").classList.add("hidden");
+      }
+      function fmtMs(ms) {
+        if (ms < 1000) return `${ms}ms`;
+        return `${(ms / 1000).toFixed(1)}s`;
+      }
+      function escapeHtml(s) {
+        return String(s ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+      function nullish(v, fallback = "—") {
+        return v === null || v === undefined || v === "" ? fallback : v;
+      }
+
+      const fileInput = document.getElementById("file-input");
+      const dropzone = document.getElementById("dropzone");
+      dropzone.addEventListener("click", () => fileInput.click());
+      ["dragover", "dragenter"].forEach((ev) =>
+        dropzone.addEventListener(ev, (e) => {
+          e.preventDefault();
+          dropzone.classList.add("is-dragover");
+        })
+      );
+      ["dragleave", "drop"].forEach((ev) =>
+        dropzone.addEventListener(ev, (e) => {
+          e.preventDefault();
+          dropzone.classList.remove("is-dragover");
+        })
+      );
+      dropzone.addEventListener("drop", (e) => {
+        const f = e.dataTransfer?.files?.[0];
+        if (f) handleUpload(f);
+      });
+      fileInput.addEventListener("change", (e) => {
+        const f = e.target.files?.[0];
+        if (f) handleUpload(f);
+      });
+
+      async function handleUpload(file) {
+        clearError();
+        if (!file.name.toLowerCase().endsWith(".pdf")) {
+          showError("文件类型不支持", "请上传 PDF 格式的简历");
+          return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+          showError("文件过大", "请压缩 PDF 后重新上传（≤ 10 MB）");
+          return;
+        }
+        const fd = new FormData();
+        fd.append("file", file);
+        document.getElementById("upload-result").classList.add("hidden");
+        document.getElementById("extract-section").classList.remove("hidden");
+        document.getElementById("extract-skeleton").classList.remove("hidden");
+        document.getElementById("extract-content").classList.add("hidden");
+        showProgress();
+        try {
+          const r = await fetch(`${API_BASE}/api/resume/upload`, {
+            method: "POST",
+            body: fd,
+          });
+          const body = await r.json();
+          if (!r.ok || body.code !== "OK") {
+            throw new Error(
+              `${body.code || "UPLOAD_FAILED"}: ${body.message || ""}`
+            );
+          }
+          currentResumeId = body.data.resume_id;
+          const cacheBadge = body.meta?.cache_hit
+            ? '<span class="chip chip-success">缓存命中</span>'
+            : "";
+          const scannedBadge = body.data.is_scanned_suspect
+            ? '<span class="chip chip-danger">疑似扫描件</span>'
+            : "";
+          document.getElementById("upload-result").innerHTML = `
+            <div class="flex flex-wrap items-center gap-2 text-xs text-ink-500">
+              <span class="chip mono">${escapeHtml(currentResumeId)}</span>
+              <span class="chip">${body.data.pages} 页 · ${body.data.char_count} 字符</span>
+              ${cacheBadge}${scannedBadge}
+              <span class="ml-auto">${fmtMs(body.meta.elapsed_ms)}</span>
+            </div>
+          `;
+          document.getElementById("upload-result").classList.remove("hidden");
+          document.getElementById("resume-id-pill").classList.remove("hidden");
+          document.getElementById("resume-id-text").textContent =
+            currentResumeId;
+          await loadExtract();
+        } catch (e) {
+          document.getElementById("extract-section").classList.add("hidden");
+          showError("上传失败", e.message);
+        } finally {
+          hideProgress();
+        }
+      }
+
+      async function loadExtract() {
+        if (!currentResumeId) return;
+        showProgress();
+        try {
+          const r = await fetch(`${API_BASE}/api/resume/${currentResumeId}`);
+          const body = await r.json();
+          if (!r.ok || body.code !== "OK") {
+            throw new Error(`${body.code}: ${body.message}`);
+          }
+          renderExtract(body.data, body.meta);
+          document.getElementById("match-section").classList.remove("hidden");
+          document.getElementById("match-btn").disabled = false;
+        } catch (e) {
+          showError("简历解析失败", e.message);
+        } finally {
+          hideProgress();
+          document.getElementById("extract-skeleton").classList.add("hidden");
+          document.getElementById("extract-content").classList.remove("hidden");
+        }
+      }
+
+      function renderExtract(data, meta) {
+        const container = document.getElementById("extract-content");
+        const errs = (data.extract_errors || []).length
+          ? `<span class="chip chip-danger">${data.extract_errors.length} 段失败</span>`
+          : "";
+        const cacheBadge = meta.cache_hit
+          ? '<span class="chip chip-success">缓存命中</span>'
+          : "";
+        document.getElementById("extract-meta").innerHTML = `
+          ${errs}${cacheBadge}
+          <span class="mono">${fmtMs(meta.elapsed_ms)} · ${meta.tokens_used} tokens</span>
+        `;
+        const b = data.basic || {};
+        const j = data.job_intent || {};
+        const bg = data.background || {};
+        container.innerHTML = `
+          <div>
+            <div class="section-title mb-3">基本信息</div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+              ${[
+                ["姓名", b.name],
+                ["电话", b.phone],
+                ["邮箱", b.email],
+                ["地址", b.address],
+              ]
+                .map(
+                  ([k, v]) => `
+                <div>
+                  <div class="text-[10px] uppercase text-ink-500 tracking-wide">${escapeHtml(k)}</div>
+                  <div class="text-sm text-ink-900 truncate">${escapeHtml(nullish(v))}</div>
+                </div>
+              `
+                )
+                .join("")}
+            </div>
+          </div>
+          <div>
+            <div class="section-title mb-3">求职信息</div>
+            <div class="flex flex-wrap gap-2">
+              ${
+                j.target_role
+                  ? `<span class="chip chip-accent">求职意向：${escapeHtml(j.target_role)}</span>`
+                  : '<span class="chip">未填写求职意向</span>'
+              }
+              ${
+                j.expected_salary
+                  ? `<span class="chip chip-accent">期望薪资：${escapeHtml(j.expected_salary)}</span>`
+                  : ""
+              }
+              ${
+                bg.years_of_experience !== null && bg.years_of_experience !== undefined
+                  ? `<span class="chip chip-warm">${bg.years_of_experience} 年工作经验</span>`
+                  : ""
+              }
+            </div>
+          </div>
+          ${
+            (bg.education || []).length
+              ? `
+            <div>
+              <div class="section-title mb-3">教育背景</div>
+              <div class="space-y-2">
+                ${bg.education
+                  .map(
+                    (e) => `
+                  <div class="text-sm flex flex-wrap gap-x-3 gap-y-1 items-baseline">
+                    <span class="text-ink-900 font-medium">${escapeHtml(nullish(e.school))}</span>
+                    <span class="chip">${escapeHtml(nullish(e.degree))}</span>
+                    <span class="text-ink-600">${escapeHtml(nullish(e.major))}</span>
+                    <span class="text-ink-500 text-xs ml-auto mono">${escapeHtml(nullish(e.period))}</span>
+                  </div>
+                `
+                  )
+                  .join("")}
+              </div>
+            </div>`
+              : ""
+          }
+          ${
+            (bg.experience || []).length
+              ? `
+            <div>
+              <div class="section-title mb-3">工作经历</div>
+              <div class="space-y-3">
+                ${bg.experience
+                  .map(
+                    (e) => `
+                  <div class="border-l-2 border-brand-500/40 pl-3 py-0.5">
+                    <div class="text-sm flex flex-wrap gap-x-2 items-baseline">
+                      <span class="text-ink-900 font-medium">${escapeHtml(nullish(e.company))}</span>
+                      <span class="text-ink-600">${escapeHtml(nullish(e.role))}</span>
+                      <span class="text-ink-500 text-xs ml-auto mono">${escapeHtml(nullish(e.start))} — ${escapeHtml(nullish(e.end))}</span>
+                    </div>
+                    ${e.summary ? `<div class="text-xs text-ink-600 mt-1 leading-relaxed">${escapeHtml(e.summary)}</div>` : ""}
+                  </div>
+                `
+                  )
+                  .join("")}
+              </div>
+            </div>`
+              : ""
+          }
+          ${
+            (bg.projects || []).length
+              ? `
+            <div>
+              <div class="section-title mb-3">项目经历</div>
+              <div class="space-y-2">
+                ${bg.projects
+                  .slice(0, 5)
+                  .map(
+                    (p) => `
+                  <div class="text-sm">
+                    <div class="text-ink-900 font-medium">${escapeHtml(nullish(p.name))}${p.role ? ` · <span class="text-ink-600 font-normal">${escapeHtml(p.role)}</span>` : ""}</div>
+                    ${p.summary ? `<div class="text-xs text-ink-600 mt-0.5 leading-relaxed">${escapeHtml(p.summary)}</div>` : ""}
+                  </div>
+                `
+                  )
+                  .join("")}
+              </div>
+            </div>`
+              : ""
+          }
+        `;
+      }
+
+      const SAMPLE_JD = `招聘后端工程师（Backend Engineer）
+
+岗位职责：
+- 负责后端服务接口开发与维护
+- 优化数据库查询性能与系统吞吐量
+- 参与高可用架构设计
+
+任职要求：
+- 本科及以上学历
+- 3 年以上 Python 后端开发经验
+- 精通 Python，熟练使用 FastAPI / Django 框架
+- 必须熟悉 MySQL，了解数据库优化
+- 加分项：熟悉 Kubernetes、Redis、消息队列`;
+
+      document.getElementById("sample-jd-btn").addEventListener("click", () => {
+        document.getElementById("jd-input").value = SAMPLE_JD;
+      });
+
+      document
+        .getElementById("match-btn")
+        .addEventListener("click", async () => {
+          const jd = document.getElementById("jd-input").value.trim();
+          if (!jd) {
+            showError("请填写岗位描述", "JD 不能为空");
+            return;
+          }
+          if (jd.length < 10) {
+            showError("岗位描述太短", "请至少输入 10 个字符的 JD 内容");
+            return;
+          }
+          if (!currentResumeId) {
+            showError("请先上传简历", "");
+            return;
+          }
+          clearError();
+          const useLLM = document.getElementById("use-llm").checked;
+          document.getElementById("match-result").classList.add("hidden");
+          document.getElementById("match-skeleton").classList.remove("hidden");
+          document.getElementById("match-btn").disabled = true;
+          showProgress();
+          try {
+            const r = await fetch(`${API_BASE}/api/match`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                resume_id: currentResumeId,
+                jd_text: jd,
+                use_llm_score: useLLM,
+                score_strategy: useLLM ? "fusion" : "heuristic_only",
+              }),
+            });
+            const body = await r.json();
+            if (!r.ok || body.code !== "OK") {
+              throw new Error(`${body.code}: ${body.message}`);
+            }
+            renderMatch(body.data, body.meta);
+          } catch (e) {
+            showError("匹配失败", e.message);
+          } finally {
+            hideProgress();
+            document.getElementById("match-skeleton").classList.add("hidden");
+            document.getElementById("match-result").classList.remove("hidden");
+            document.getElementById("match-btn").disabled = false;
+          }
+        });
+
+      function renderMatch(data, meta) {
+        const r = document.getElementById("match-result");
+        const score = data.final_score;
+        const tag =
+          score >= 80
+            ? "高度匹配"
+            : score >= 70
+              ? "基本胜任"
+              : score >= 60
+                ? "边缘可考虑"
+                : "差距较大";
+        const tagClass =
+          score >= 80
+            ? "chip-success"
+            : score >= 60
+              ? "chip-warm"
+              : "chip-danger";
+        const skill = data.breakdown.skill_match;
+        const exp = data.breakdown.experience;
+        const edu = data.breakdown.education;
+        const cacheBadge = meta.cache_hit
+          ? '<span class="chip chip-success">缓存命中</span>'
+          : "";
+        r.innerHTML = `
+          <div class="flex items-center gap-6 flex-wrap">
+            <div class="score-ring" style="--p: ${score}%">
+              <div class="bg-ink-50 rounded-full w-28 h-28 flex flex-col items-center justify-center">
+                <div class="text-3xl font-semibold text-ink-900 mono">${score}</div>
+                <div class="text-[10px] text-ink-500 tracking-wide uppercase">/ 100</div>
+              </div>
+            </div>
+            <div class="flex-1 min-w-0 space-y-2">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="chip ${tagClass}">${tag}</span>
+                ${cacheBadge}
+                <span class="text-[11px] text-ink-500 mono ml-auto">
+                  ${fmtMs(meta.elapsed_ms)} · ${meta.tokens_used} tokens
+                </span>
+              </div>
+              <div class="text-sm text-ink-700 leading-relaxed">${escapeHtml(data.summary)}</div>
+              <div class="text-xs text-ink-500 mono">
+                启发式 ${data.breakdown.heuristic_total}
+                ${data.breakdown.llm_score !== null ? `· AI ${data.breakdown.llm_score}` : ""}
+                · 权重 ${data.breakdown.weights.heuristic}/${data.breakdown.weights.llm}
+              </div>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
+            ${[
+              {
+                title: "技能匹配",
+                score: skill.score,
+                detail: `必备 ${skill.must_hit.length}/${skill.must_total}${skill.nice_total ? ` · 加分 ${skill.nice_hit.length}/${skill.nice_total}` : ""}`,
+                hits: skill.must_hit,
+                miss: skill.must_miss,
+                bonus: skill.nice_hit,
+              },
+              {
+                title: "经验年限",
+                score: exp.score,
+                detail: `候选 ${nullish(exp.candidate_years, "?")} 年 · 要求 ${nullish(exp.required_years, "?")} 年`,
+              },
+              {
+                title: "学历",
+                score: edu.score,
+                detail: `候选 ${nullish(edu.candidate)} · 要求 ${nullish(edu.required)}`,
+              },
+            ]
+              .map(
+                (m) => `
+              <div class="rounded-lg p-4 border border-white/[0.06] bg-white/[0.02]">
+                <div class="flex items-baseline justify-between">
+                  <div class="text-xs text-ink-500 tracking-wide uppercase">${m.title}</div>
+                  <div class="text-xl font-semibold mono ${m.score >= 80 ? "text-emerald-300" : m.score >= 60 ? "text-amber-300" : "text-rose-300"}">${m.score}</div>
+                </div>
+                <div class="text-xs text-ink-600 mt-1">${m.detail}</div>
+                ${
+                  m.hits
+                    ? `
+                  <div class="mt-2 flex flex-wrap gap-1">
+                    ${(m.hits || []).map((h) => `<span class="chip chip-success">${escapeHtml(h)}</span>`).join("")}
+                    ${(m.miss || []).map((h) => `<span class="chip chip-danger">缺 ${escapeHtml(h)}</span>`).join("")}
+                    ${(m.bonus || []).map((h) => `<span class="chip chip-warm">+ ${escapeHtml(h)}</span>`).join("")}
+                  </div>`
+                    : ""
+                }
+              </div>`
+              )
+              .join("")}
+          </div>
+          ${
+            data.strengths?.length || data.gaps?.length
+              ? `
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+              ${
+                data.strengths?.length
+                  ? `
+                <div>
+                  <div class="section-title mb-2">候选人优势</div>
+                  <ul class="space-y-1.5">
+                    ${data.strengths.map((s) => `<li class="text-sm text-ink-700 flex gap-2"><span class="text-emerald-400 select-none">✓</span><span>${escapeHtml(s)}</span></li>`).join("")}
+                  </ul>
+                </div>`
+                  : ""
+              }
+              ${
+                data.gaps?.length
+                  ? `
+                <div>
+                  <div class="section-title mb-2">差距与改进点</div>
+                  <ul class="space-y-1.5">
+                    ${data.gaps.map((g) => `<li class="text-sm text-ink-700 flex gap-2"><span class="text-rose-400 select-none">!</span><span>${escapeHtml(g)}</span></li>`).join("")}
+                  </ul>
+                </div>`
+                  : ""
+              }
+            </div>`
+              : ""
+          }
+        `;
+      }
+    </script>
+  </body>
+</html>
