@@ -2,50 +2,50 @@
   "version": "0",
   "manifest": {
     "repo": "智能简历分析系统",
-    "generated_at": "2026-05-19T00:00:00Z",
-    "generator": "ai@claude-opus-4.7 via planning",
+    "generated_at": "2026-05-19T01:00:00Z",
+    "generator": "ai@claude-opus-4.7 via planning+spec",
     "lang": "zh-CN"
   },
   "epics": [
     {
       "id": "frontend",
       "name": "前端交互",
-      "summary": "用户上传简历、查看解析与匹配结果的页面",
+      "summary": "用户上传简历、查看解析与匹配结果的页面（本期不实现，仅预留接口契约）",
       "order": 0,
       "importance": "normal"
     },
     {
       "id": "upload",
       "name": "简历上传",
-      "summary": "接收 PDF 文件，落盘或转交后端处理",
+      "summary": "FastAPI multipart 接口接收 PDF，校验后转交解析",
       "order": 1,
       "importance": "core"
     },
     {
       "id": "parse",
       "name": "简历解析",
-      "summary": "从 PDF 提取文本并清洗结构化",
+      "summary": "pdfplumber 多页抽文本 + 清洗规则（控制字符/空白/段落）",
       "order": 2,
       "importance": "core"
     },
     {
       "id": "extract",
       "name": "关键信息提取",
-      "summary": "用 AI 模型从文本中抽取基本/求职/背景信息",
+      "summary": "MiMo 大模型抽取基本/求职/背景信息，三段并发，正则兜底",
       "order": 3,
       "importance": "core"
     },
     {
       "id": "scoring",
       "name": "岗位匹配评分",
-      "summary": "把简历信息与岗位需求做关键词与 AI 评分",
+      "summary": "启发式规则评分 + LLM 语义评分加权融合，权重可配",
       "order": 4,
       "importance": "core"
     },
     {
       "id": "infra",
       "name": "基础设施",
-      "summary": "Serverless 部署、缓存、前端公开访问",
+      "summary": "阿里云函数计算部署、缓存抽象（memory/redis）、Swagger UI 演示",
       "order": 5,
       "importance": "auxiliary"
     }
@@ -54,410 +54,1194 @@
     {
       "id": "f-frontend-upload",
       "name": "前端上传页",
-      "summary": "用户在网页选择 PDF 并提交",
+      "summary": "本期不实现 UI；后端预留接口契约，CORS 与错误码已就绪",
       "epicId": "frontend",
       "triggers": [
-        { "kind": "ui", "detail": "页面文件选择 + 上传按钮" }
+        {
+          "kind": "ui",
+          "detail": "页面文件选择 + 上传按钮"
+        }
       ],
       "steps": [
-        { "id": "pick", "name": "选择简历文件", "role": "input" },
-        { "id": "validate", "name": "校验文件类型", "role": "validation" },
-        { "id": "submit", "name": "提交到后端", "role": "side-effect" },
-        { "id": "wait", "name": "展示加载状态", "role": "output" }
+        {
+          "id": "pick",
+          "name": "选择简历文件",
+          "role": "input"
+        },
+        {
+          "id": "validate",
+          "name": "校验文件类型",
+          "role": "validation"
+        },
+        {
+          "id": "submit",
+          "name": "提交到后端",
+          "role": "side-effect"
+        },
+        {
+          "id": "wait",
+          "name": "展示加载状态",
+          "role": "output"
+        }
       ],
       "flow": [
-        { "from": "pick", "to": "validate", "kind": "next" },
-        { "from": "validate", "to": "submit", "kind": "conditional", "condition": "类型为 PDF" },
-        { "from": "submit", "to": "wait", "kind": "async" }
+        {
+          "from": "pick",
+          "to": "validate",
+          "kind": "next"
+        },
+        {
+          "from": "validate",
+          "to": "submit",
+          "kind": "conditional",
+          "condition": "类型为 PDF"
+        },
+        {
+          "from": "submit",
+          "to": "wait",
+          "kind": "async"
+        }
       ],
       "confidence": 0.4,
       "provenance": "ai",
-      "tags": ["planned"],
+      "tags": [
+        "planned",
+        "deferred"
+      ],
       "updated_at": "2026-05-19T00:00:00Z"
     },
     {
       "id": "f-frontend-result",
       "name": "结果展示页",
-      "summary": "展示解析信息与岗位匹配评分",
+      "summary": "本期不实现 UI；Swagger UI 作为临时演示页",
       "epicId": "frontend",
       "triggers": [
-        { "kind": "ui", "detail": "上传完成后跳转或同页渲染" }
+        {
+          "kind": "ui",
+          "detail": "上传完成后跳转或同页渲染"
+        }
       ],
       "steps": [
-        { "id": "recv", "name": "接收结果数据", "role": "input" },
-        { "id": "render", "name": "渲染结构化信息", "role": "output" },
-        { "id": "input-jd", "name": "输入岗位描述", "role": "input" },
-        { "id": "show-score", "name": "展示匹配评分", "role": "output" }
+        {
+          "id": "recv",
+          "name": "接收结果数据",
+          "role": "input"
+        },
+        {
+          "id": "render",
+          "name": "渲染结构化信息",
+          "role": "output"
+        },
+        {
+          "id": "input-jd",
+          "name": "输入岗位描述",
+          "role": "input"
+        },
+        {
+          "id": "show-score",
+          "name": "展示匹配评分",
+          "role": "output"
+        }
       ],
       "flow": [
-        { "from": "recv", "to": "render", "kind": "next" },
-        { "from": "render", "to": "input-jd", "kind": "next" },
-        { "from": "input-jd", "to": "show-score", "kind": "async" }
+        {
+          "from": "recv",
+          "to": "render",
+          "kind": "next"
+        },
+        {
+          "from": "render",
+          "to": "input-jd",
+          "kind": "next"
+        },
+        {
+          "from": "input-jd",
+          "to": "show-score",
+          "kind": "async"
+        }
       ],
       "confidence": 0.4,
       "provenance": "ai",
-      "tags": ["planned"],
+      "tags": [
+        "planned",
+        "deferred"
+      ],
       "updated_at": "2026-05-19T00:00:00Z"
     },
     {
       "id": "f-upload-pdf",
       "name": "上传简历接口",
-      "summary": "RESTful 接口接收单个 PDF 文件",
+      "summary": "FastAPI multipart 接口，扩展名+MIME+magic bytes 三层校验，10MB 上限",
       "epicId": "upload",
       "triggers": [
-        { "kind": "http", "detail": "POST /api/resume/upload" }
+        {
+          "kind": "http",
+          "detail": "POST /api/resume/upload (multipart/form-data)"
+        }
       ],
       "steps": [
-        { "id": "recv", "name": "接收文件请求", "role": "input" },
-        { "id": "check-type", "name": "校验文件类型", "role": "validation" },
-        { "id": "check-size", "name": "校验文件大小", "role": "validation" },
-        { "id": "store", "name": "暂存文件", "role": "data-write" },
-        { "id": "ok", "name": "返回上传 ID", "role": "output" },
-        { "id": "fail", "name": "返回上传错误", "role": "error" }
+        {
+          "id": "recv",
+          "name": "接收文件请求",
+          "role": "input"
+        },
+        {
+          "id": "check-type",
+          "name": "校验文件类型",
+          "role": "validation"
+        },
+        {
+          "id": "check-size",
+          "name": "校验文件大小",
+          "role": "validation"
+        },
+        {
+          "id": "store",
+          "name": "暂存文件",
+          "role": "data-write"
+        },
+        {
+          "id": "ok",
+          "name": "返回上传 ID",
+          "role": "output"
+        },
+        {
+          "id": "fail",
+          "name": "返回上传错误",
+          "role": "error"
+        }
       ],
       "flow": [
-        { "from": "recv", "to": "check-type", "kind": "next" },
-        { "from": "check-type", "to": "check-size", "kind": "conditional", "condition": "为 PDF" },
-        { "from": "check-type", "to": "fail", "kind": "conditional", "condition": "非 PDF" },
-        { "from": "check-size", "to": "store", "kind": "conditional", "condition": "大小合规" },
-        { "from": "check-size", "to": "fail", "kind": "conditional", "condition": "超出限制" },
-        { "from": "store", "to": "ok", "kind": "next" }
+        {
+          "from": "recv",
+          "to": "check-type",
+          "kind": "next"
+        },
+        {
+          "from": "check-type",
+          "to": "check-size",
+          "kind": "conditional",
+          "condition": "为 PDF"
+        },
+        {
+          "from": "check-type",
+          "to": "fail",
+          "kind": "conditional",
+          "condition": "非 PDF"
+        },
+        {
+          "from": "check-size",
+          "to": "store",
+          "kind": "conditional",
+          "condition": "大小合规"
+        },
+        {
+          "from": "check-size",
+          "to": "fail",
+          "kind": "conditional",
+          "condition": "超出限制"
+        },
+        {
+          "from": "store",
+          "to": "ok",
+          "kind": "next"
+        }
       ],
       "confidence": 0.5,
       "provenance": "ai",
-      "tags": ["planned"],
+      "tags": [
+        "planned"
+      ],
       "updated_at": "2026-05-19T00:00:00Z"
     },
     {
       "id": "f-pdf-parse",
       "name": "解析 PDF 文本",
-      "summary": "从多页 PDF 抽取原始文本",
+      "summary": "pdfplumber 逐页抽取，损坏/加密 PDF 抛 PDFParseError",
       "epicId": "parse",
       "triggers": [
-        { "kind": "event", "detail": "上传完成后内部调用" }
+        {
+          "kind": "event",
+          "detail": "上传完成后内部调用"
+        }
       ],
       "steps": [
-        { "id": "load", "name": "加载 PDF", "role": "data-read" },
-        { "id": "iter", "name": "遍历页面", "role": "compute" },
-        { "id": "extract", "name": "抽取文本", "role": "transform" },
-        { "id": "join", "name": "合并多页文本", "role": "transform" },
-        { "id": "fail", "name": "返回解析失败", "role": "error" }
+        {
+          "id": "load",
+          "name": "加载 PDF",
+          "role": "data-read"
+        },
+        {
+          "id": "iter",
+          "name": "遍历页面",
+          "role": "compute"
+        },
+        {
+          "id": "extract",
+          "name": "抽取文本",
+          "role": "transform"
+        },
+        {
+          "id": "join",
+          "name": "合并多页文本",
+          "role": "transform"
+        },
+        {
+          "id": "fail",
+          "name": "返回解析失败",
+          "role": "error"
+        }
       ],
       "flow": [
-        { "from": "load", "to": "iter", "kind": "conditional", "condition": "PDF 可读" },
-        { "from": "load", "to": "fail", "kind": "conditional", "condition": "PDF 损坏或加密" },
-        { "from": "iter", "to": "extract", "kind": "loop", "condition": "每一页" },
-        { "from": "extract", "to": "join", "kind": "next" }
+        {
+          "from": "load",
+          "to": "iter",
+          "kind": "conditional",
+          "condition": "PDF 可读"
+        },
+        {
+          "from": "load",
+          "to": "fail",
+          "kind": "conditional",
+          "condition": "PDF 损坏或加密"
+        },
+        {
+          "from": "iter",
+          "to": "extract",
+          "kind": "loop",
+          "condition": "每一页"
+        },
+        {
+          "from": "extract",
+          "to": "join",
+          "kind": "next"
+        }
       ],
       "confidence": 0.45,
       "provenance": "ai",
-      "tags": ["planned"],
+      "tags": [
+        "planned"
+      ],
       "updated_at": "2026-05-19T00:00:00Z"
     },
     {
       "id": "f-text-clean",
       "name": "文本清洗与分段",
-      "summary": "去除冗余字符并按语义分段",
+      "summary": "去控制字符、归一空白、段落合并、长度截断（≤6000 字喂给 LLM）",
       "epicId": "parse",
       "triggers": [
-        { "kind": "event", "detail": "PDF 文本抽取完成" }
+        {
+          "kind": "event",
+          "detail": "PDF 文本抽取完成"
+        }
       ],
       "steps": [
-        { "id": "in", "name": "接收原始文本", "role": "input" },
-        { "id": "strip", "name": "去除控制字符", "role": "transform" },
-        { "id": "normalize", "name": "归一化空白", "role": "transform" },
-        { "id": "segment", "name": "切分语义段落", "role": "compute" },
-        { "id": "out", "name": "输出结构化文本", "role": "output" }
+        {
+          "id": "in",
+          "name": "接收原始文本",
+          "role": "input"
+        },
+        {
+          "id": "strip",
+          "name": "去除控制字符",
+          "role": "transform"
+        },
+        {
+          "id": "normalize",
+          "name": "归一化空白",
+          "role": "transform"
+        },
+        {
+          "id": "segment",
+          "name": "切分语义段落",
+          "role": "compute"
+        },
+        {
+          "id": "out",
+          "name": "输出结构化文本",
+          "role": "output"
+        }
       ],
       "flow": [
-        { "from": "in", "to": "strip", "kind": "next" },
-        { "from": "strip", "to": "normalize", "kind": "next" },
-        { "from": "normalize", "to": "segment", "kind": "next" },
-        { "from": "segment", "to": "out", "kind": "next" }
+        {
+          "from": "in",
+          "to": "strip",
+          "kind": "next"
+        },
+        {
+          "from": "strip",
+          "to": "normalize",
+          "kind": "next"
+        },
+        {
+          "from": "normalize",
+          "to": "segment",
+          "kind": "next"
+        },
+        {
+          "from": "segment",
+          "to": "out",
+          "kind": "next"
+        }
       ],
       "confidence": 0.4,
       "provenance": "ai",
-      "tags": ["planned"],
+      "tags": [
+        "planned"
+      ],
       "updated_at": "2026-05-19T00:00:00Z"
     },
     {
       "id": "f-extract-basic",
       "name": "提取基本信息",
-      "summary": "抽取姓名、电话、邮箱、地址",
+      "summary": "MiMo JSON 模式抽取姓名/电话/邮箱/地址，失败降级到正则兜底",
       "epicId": "extract",
       "triggers": [
-        { "kind": "event", "detail": "文本清洗完成" }
+        {
+          "kind": "event",
+          "detail": "文本清洗完成"
+        }
       ],
       "steps": [
-        { "id": "in", "name": "接收清洗文本", "role": "input" },
-        { "id": "prompt", "name": "构造抽取提示", "role": "compute" },
-        { "id": "call-llm", "name": "调用大模型", "role": "side-effect" },
-        { "id": "parse", "name": "解析模型输出", "role": "transform" },
-        { "id": "fallback", "name": "正则兜底抽取", "role": "compute" },
-        { "id": "out", "name": "输出基本信息", "role": "output" },
-        { "id": "fail", "name": "返回抽取失败", "role": "error" }
+        {
+          "id": "in",
+          "name": "接收清洗文本",
+          "role": "input"
+        },
+        {
+          "id": "prompt",
+          "name": "构造抽取提示",
+          "role": "compute"
+        },
+        {
+          "id": "call-llm",
+          "name": "调用大模型",
+          "role": "side-effect"
+        },
+        {
+          "id": "parse",
+          "name": "解析模型输出",
+          "role": "transform"
+        },
+        {
+          "id": "fallback",
+          "name": "正则兜底抽取",
+          "role": "compute"
+        },
+        {
+          "id": "out",
+          "name": "输出基本信息",
+          "role": "output"
+        },
+        {
+          "id": "fail",
+          "name": "返回抽取失败",
+          "role": "error"
+        }
       ],
       "flow": [
-        { "from": "in", "to": "prompt", "kind": "next" },
-        { "from": "prompt", "to": "call-llm", "kind": "async" },
-        { "from": "call-llm", "to": "parse", "kind": "conditional", "condition": "模型返回成功" },
-        { "from": "call-llm", "to": "fallback", "kind": "conditional", "condition": "模型超时或失败" },
-        { "from": "parse", "to": "out", "kind": "next" },
-        { "from": "fallback", "to": "out", "kind": "next" },
-        { "from": "parse", "to": "fail", "kind": "error" }
+        {
+          "from": "in",
+          "to": "prompt",
+          "kind": "next"
+        },
+        {
+          "from": "prompt",
+          "to": "call-llm",
+          "kind": "async"
+        },
+        {
+          "from": "call-llm",
+          "to": "parse",
+          "kind": "conditional",
+          "condition": "模型返回成功"
+        },
+        {
+          "from": "call-llm",
+          "to": "fallback",
+          "kind": "conditional",
+          "condition": "模型超时或失败"
+        },
+        {
+          "from": "parse",
+          "to": "out",
+          "kind": "next"
+        },
+        {
+          "from": "fallback",
+          "to": "out",
+          "kind": "next"
+        },
+        {
+          "from": "parse",
+          "to": "fail",
+          "kind": "error"
+        }
       ],
       "confidence": 0.5,
       "provenance": "ai",
-      "tags": ["planned"],
+      "tags": [
+        "planned"
+      ],
       "updated_at": "2026-05-19T00:00:00Z"
     },
     {
       "id": "f-extract-job",
       "name": "提取求职信息",
-      "summary": "抽取求职意向与期望薪资（加分项）",
+      "summary": "MiMo JSON 模式抽取求职意向与期望薪资（加分项）",
       "epicId": "extract",
       "triggers": [
-        { "kind": "event", "detail": "文本清洗完成" }
+        {
+          "kind": "event",
+          "detail": "文本清洗完成"
+        }
       ],
       "steps": [
-        { "id": "in", "name": "接收清洗文本", "role": "input" },
-        { "id": "prompt", "name": "构造意向提示", "role": "compute" },
-        { "id": "call-llm", "name": "调用大模型", "role": "side-effect" },
-        { "id": "parse", "name": "解析意向与薪资", "role": "transform" },
-        { "id": "out", "name": "输出求职信息", "role": "output" }
+        {
+          "id": "in",
+          "name": "接收清洗文本",
+          "role": "input"
+        },
+        {
+          "id": "prompt",
+          "name": "构造意向提示",
+          "role": "compute"
+        },
+        {
+          "id": "call-llm",
+          "name": "调用大模型",
+          "role": "side-effect"
+        },
+        {
+          "id": "parse",
+          "name": "解析意向与薪资",
+          "role": "transform"
+        },
+        {
+          "id": "out",
+          "name": "输出求职信息",
+          "role": "output"
+        }
       ],
       "flow": [
-        { "from": "in", "to": "prompt", "kind": "next" },
-        { "from": "prompt", "to": "call-llm", "kind": "async" },
-        { "from": "call-llm", "to": "parse", "kind": "next" },
-        { "from": "parse", "to": "out", "kind": "next" }
+        {
+          "from": "in",
+          "to": "prompt",
+          "kind": "next"
+        },
+        {
+          "from": "prompt",
+          "to": "call-llm",
+          "kind": "async"
+        },
+        {
+          "from": "call-llm",
+          "to": "parse",
+          "kind": "next"
+        },
+        {
+          "from": "parse",
+          "to": "out",
+          "kind": "next"
+        }
       ],
       "confidence": 0.3,
       "provenance": "ai",
-      "tags": ["planned", "v1-bonus"],
+      "tags": [
+        "planned",
+        "v1-bonus"
+      ],
       "updated_at": "2026-05-19T00:00:00Z"
     },
     {
       "id": "f-extract-background",
       "name": "提取背景信息",
-      "summary": "抽取工作年限、学历背景、项目经历（加分项）",
+      "summary": "MiMo 抽取学历/项目经历，并基于经历日期自动计算工作年限（加分项）",
       "epicId": "extract",
       "triggers": [
-        { "kind": "event", "detail": "文本清洗完成" }
+        {
+          "kind": "event",
+          "detail": "文本清洗完成"
+        }
       ],
       "steps": [
-        { "id": "in", "name": "接收清洗文本", "role": "input" },
-        { "id": "prompt", "name": "构造背景提示", "role": "compute" },
-        { "id": "call-llm", "name": "调用大模型", "role": "side-effect" },
-        { "id": "parse", "name": "解析背景信息", "role": "transform" },
-        { "id": "calc-years", "name": "计算工作年限", "role": "compute" },
-        { "id": "out", "name": "输出背景信息", "role": "output" }
+        {
+          "id": "in",
+          "name": "接收清洗文本",
+          "role": "input"
+        },
+        {
+          "id": "prompt",
+          "name": "构造背景提示",
+          "role": "compute"
+        },
+        {
+          "id": "call-llm",
+          "name": "调用大模型",
+          "role": "side-effect"
+        },
+        {
+          "id": "parse",
+          "name": "解析背景信息",
+          "role": "transform"
+        },
+        {
+          "id": "calc-years",
+          "name": "计算工作年限",
+          "role": "compute"
+        },
+        {
+          "id": "out",
+          "name": "输出背景信息",
+          "role": "output"
+        }
       ],
       "flow": [
-        { "from": "in", "to": "prompt", "kind": "next" },
-        { "from": "prompt", "to": "call-llm", "kind": "async" },
-        { "from": "call-llm", "to": "parse", "kind": "next" },
-        { "from": "parse", "to": "calc-years", "kind": "next" },
-        { "from": "calc-years", "to": "out", "kind": "next" }
+        {
+          "from": "in",
+          "to": "prompt",
+          "kind": "next"
+        },
+        {
+          "from": "prompt",
+          "to": "call-llm",
+          "kind": "async"
+        },
+        {
+          "from": "call-llm",
+          "to": "parse",
+          "kind": "next"
+        },
+        {
+          "from": "parse",
+          "to": "calc-years",
+          "kind": "next"
+        },
+        {
+          "from": "calc-years",
+          "to": "out",
+          "kind": "next"
+        }
       ],
       "confidence": 0.3,
       "provenance": "ai",
-      "tags": ["planned", "v1-bonus"],
+      "tags": [
+        "planned",
+        "v1-bonus"
+      ],
       "updated_at": "2026-05-19T00:00:00Z"
     },
     {
       "id": "f-jd-keywords",
       "name": "岗位关键词提取",
-      "summary": "从岗位需求文本提取技能与要求关键词",
+      "summary": "MiMo 从 JD 提取技能/职责/必备/加分关键词，结果按 jd_text hash 缓存",
       "epicId": "scoring",
       "triggers": [
-        { "kind": "http", "detail": "POST /api/jd/keywords" }
+        {
+          "kind": "http",
+          "detail": "POST /api/jd/keywords (application/json)"
+        }
       ],
       "steps": [
-        { "id": "in", "name": "接收岗位描述", "role": "input" },
-        { "id": "validate", "name": "校验文本非空", "role": "validation" },
-        { "id": "prompt", "name": "构造提取提示", "role": "compute" },
-        { "id": "call-llm", "name": "调用大模型", "role": "side-effect" },
-        { "id": "parse", "name": "解析关键词列表", "role": "transform" },
-        { "id": "out", "name": "返回关键词", "role": "output" },
-        { "id": "fail", "name": "返回提取失败", "role": "error" }
+        {
+          "id": "in",
+          "name": "接收岗位描述",
+          "role": "input"
+        },
+        {
+          "id": "validate",
+          "name": "校验文本非空",
+          "role": "validation"
+        },
+        {
+          "id": "prompt",
+          "name": "构造提取提示",
+          "role": "compute"
+        },
+        {
+          "id": "call-llm",
+          "name": "调用大模型",
+          "role": "side-effect"
+        },
+        {
+          "id": "parse",
+          "name": "解析关键词列表",
+          "role": "transform"
+        },
+        {
+          "id": "out",
+          "name": "返回关键词",
+          "role": "output"
+        },
+        {
+          "id": "fail",
+          "name": "返回提取失败",
+          "role": "error"
+        }
       ],
       "flow": [
-        { "from": "in", "to": "validate", "kind": "next" },
-        { "from": "validate", "to": "prompt", "kind": "conditional", "condition": "文本非空" },
-        { "from": "validate", "to": "fail", "kind": "conditional", "condition": "文本为空" },
-        { "from": "prompt", "to": "call-llm", "kind": "async" },
-        { "from": "call-llm", "to": "parse", "kind": "next" },
-        { "from": "parse", "to": "out", "kind": "next" }
+        {
+          "from": "in",
+          "to": "validate",
+          "kind": "next"
+        },
+        {
+          "from": "validate",
+          "to": "prompt",
+          "kind": "conditional",
+          "condition": "文本非空"
+        },
+        {
+          "from": "validate",
+          "to": "fail",
+          "kind": "conditional",
+          "condition": "文本为空"
+        },
+        {
+          "from": "prompt",
+          "to": "call-llm",
+          "kind": "async"
+        },
+        {
+          "from": "call-llm",
+          "to": "parse",
+          "kind": "next"
+        },
+        {
+          "from": "parse",
+          "to": "out",
+          "kind": "next"
+        }
       ],
       "confidence": 0.45,
       "provenance": "ai",
-      "tags": ["planned"],
+      "tags": [
+        "planned"
+      ],
       "updated_at": "2026-05-19T00:00:00Z"
     },
     {
       "id": "f-match-score",
       "name": "匹配度评分",
-      "summary": "对比简历信息与岗位关键词，计算匹配分",
+      "summary": "技能命中率 + 经验年限差 + 学历枚举，加权 0.5/0.3/0.2 出综合分",
       "epicId": "scoring",
       "triggers": [
-        { "kind": "http", "detail": "POST /api/resume/match" }
+        {
+          "kind": "http",
+          "detail": "POST /api/match (application/json)"
+        }
       ],
       "steps": [
-        { "id": "in", "name": "接收简历与岗位", "role": "input" },
-        { "id": "load-resume", "name": "读取简历信息", "role": "data-read" },
-        { "id": "skill-hit", "name": "计算技能命中率", "role": "compute" },
-        { "id": "exp-score", "name": "评估经验相关性", "role": "compute" },
-        { "id": "weighted", "name": "加权综合得分", "role": "compute" },
-        { "id": "out", "name": "返回匹配评分", "role": "output" }
+        {
+          "id": "in",
+          "name": "接收简历与岗位",
+          "role": "input"
+        },
+        {
+          "id": "load-resume",
+          "name": "读取简历信息",
+          "role": "data-read"
+        },
+        {
+          "id": "skill-hit",
+          "name": "计算技能命中率",
+          "role": "compute"
+        },
+        {
+          "id": "exp-score",
+          "name": "评估经验相关性",
+          "role": "compute"
+        },
+        {
+          "id": "weighted",
+          "name": "加权综合得分",
+          "role": "compute"
+        },
+        {
+          "id": "out",
+          "name": "返回匹配评分",
+          "role": "output"
+        }
       ],
       "flow": [
-        { "from": "in", "to": "load-resume", "kind": "next" },
-        { "from": "load-resume", "to": "skill-hit", "kind": "next" },
-        { "from": "skill-hit", "to": "exp-score", "kind": "next" },
-        { "from": "exp-score", "to": "weighted", "kind": "next" },
-        { "from": "weighted", "to": "out", "kind": "next" }
+        {
+          "from": "in",
+          "to": "load-resume",
+          "kind": "next"
+        },
+        {
+          "from": "load-resume",
+          "to": "skill-hit",
+          "kind": "next"
+        },
+        {
+          "from": "skill-hit",
+          "to": "exp-score",
+          "kind": "next"
+        },
+        {
+          "from": "exp-score",
+          "to": "weighted",
+          "kind": "next"
+        },
+        {
+          "from": "weighted",
+          "to": "out",
+          "kind": "next"
+        }
       ],
       "confidence": 0.4,
       "provenance": "ai",
-      "tags": ["planned"],
+      "tags": [
+        "planned"
+      ],
       "updated_at": "2026-05-19T00:00:00Z"
     },
     {
       "id": "f-ai-score",
       "name": "AI 精准评分",
-      "summary": "用大模型对匹配度做语义级评分（加分项）",
+      "summary": "MiMo 输出 score+summary+strengths+gaps，与启发式分按 0.6/0.4 融合（加分项）",
       "epicId": "scoring",
       "triggers": [
-        { "kind": "event", "detail": "基础匹配完成后触发" }
+        {
+          "kind": "event",
+          "detail": "基础匹配完成后触发"
+        }
       ],
       "steps": [
-        { "id": "in", "name": "接收简历与岗位", "role": "input" },
-        { "id": "prompt", "name": "构造评分提示", "role": "compute" },
-        { "id": "call-llm", "name": "调用大模型评分", "role": "side-effect" },
-        { "id": "parse", "name": "解析分数与理由", "role": "transform" },
-        { "id": "merge", "name": "融合规则分与AI分", "role": "compute" },
-        { "id": "out", "name": "返回综合评分", "role": "output" }
+        {
+          "id": "in",
+          "name": "接收简历与岗位",
+          "role": "input"
+        },
+        {
+          "id": "prompt",
+          "name": "构造评分提示",
+          "role": "compute"
+        },
+        {
+          "id": "call-llm",
+          "name": "调用大模型评分",
+          "role": "side-effect"
+        },
+        {
+          "id": "parse",
+          "name": "解析分数与理由",
+          "role": "transform"
+        },
+        {
+          "id": "merge",
+          "name": "融合规则分与AI分",
+          "role": "compute"
+        },
+        {
+          "id": "out",
+          "name": "返回综合评分",
+          "role": "output"
+        }
       ],
       "flow": [
-        { "from": "in", "to": "prompt", "kind": "next" },
-        { "from": "prompt", "to": "call-llm", "kind": "async" },
-        { "from": "call-llm", "to": "parse", "kind": "next" },
-        { "from": "parse", "to": "merge", "kind": "next" },
-        { "from": "merge", "to": "out", "kind": "next" }
+        {
+          "from": "in",
+          "to": "prompt",
+          "kind": "next"
+        },
+        {
+          "from": "prompt",
+          "to": "call-llm",
+          "kind": "async"
+        },
+        {
+          "from": "call-llm",
+          "to": "parse",
+          "kind": "next"
+        },
+        {
+          "from": "parse",
+          "to": "merge",
+          "kind": "next"
+        },
+        {
+          "from": "merge",
+          "to": "out",
+          "kind": "next"
+        }
       ],
       "confidence": 0.3,
       "provenance": "ai",
-      "tags": ["planned", "v1-bonus"],
+      "tags": [
+        "planned",
+        "v1-bonus"
+      ],
       "updated_at": "2026-05-19T00:00:00Z"
     },
     {
       "id": "f-result-json",
       "name": "结果聚合输出",
-      "summary": "把解析、信息、评分聚合为统一 JSON",
+      "summary": "GET /api/resume/{id}：三段并发抽取后聚合，meta 含耗时/token/缓存命中",
       "epicId": "scoring",
       "triggers": [
-        { "kind": "http", "detail": "GET /api/resume/{id}" }
+        {
+          "kind": "http",
+          "detail": "GET /api/resume/{resume_id}"
+        }
       ],
       "steps": [
-        { "id": "in", "name": "接收结果请求", "role": "input" },
-        { "id": "gather", "name": "汇总各模块输出", "role": "data-read" },
-        { "id": "shape", "name": "组装响应结构", "role": "transform" },
-        { "id": "out", "name": "返回 JSON 结果", "role": "output" },
-        { "id": "fail", "name": "返回未找到错误", "role": "error" }
+        {
+          "id": "in",
+          "name": "接收结果请求",
+          "role": "input"
+        },
+        {
+          "id": "gather",
+          "name": "汇总各模块输出",
+          "role": "data-read"
+        },
+        {
+          "id": "shape",
+          "name": "组装响应结构",
+          "role": "transform"
+        },
+        {
+          "id": "out",
+          "name": "返回 JSON 结果",
+          "role": "output"
+        },
+        {
+          "id": "fail",
+          "name": "返回未找到错误",
+          "role": "error"
+        }
       ],
       "flow": [
-        { "from": "in", "to": "gather", "kind": "next" },
-        { "from": "gather", "to": "shape", "kind": "conditional", "condition": "数据存在" },
-        { "from": "gather", "to": "fail", "kind": "conditional", "condition": "数据缺失" },
-        { "from": "shape", "to": "out", "kind": "next" }
+        {
+          "from": "in",
+          "to": "gather",
+          "kind": "next"
+        },
+        {
+          "from": "gather",
+          "to": "shape",
+          "kind": "conditional",
+          "condition": "数据存在"
+        },
+        {
+          "from": "gather",
+          "to": "fail",
+          "kind": "conditional",
+          "condition": "数据缺失"
+        },
+        {
+          "from": "shape",
+          "to": "out",
+          "kind": "next"
+        }
       ],
       "confidence": 0.45,
       "provenance": "ai",
-      "tags": ["planned"],
+      "tags": [
+        "planned"
+      ],
       "updated_at": "2026-05-19T00:00:00Z"
     },
     {
       "id": "f-cache",
       "name": "结果缓存",
-      "summary": "用 Redis 缓存简历解析与评分结果（加分项）",
+      "summary": "Cache 抽象：memory（默认，零依赖）/ redis（加分），按文件/文本 hash 缓存解析、抽取、评分",
       "epicId": "infra",
       "triggers": [
-        { "kind": "event", "detail": "解析或评分前查询缓存" }
+        {
+          "kind": "event",
+          "detail": "解析或评分前查询缓存"
+        }
       ],
       "steps": [
-        { "id": "key", "name": "计算缓存键", "role": "compute" },
-        { "id": "lookup", "name": "查询缓存", "role": "data-read" },
-        { "id": "hit", "name": "返回缓存结果", "role": "output" },
-        { "id": "miss", "name": "继续后续计算", "role": "other" },
-        { "id": "save", "name": "写入缓存", "role": "data-write" }
+        {
+          "id": "key",
+          "name": "计算缓存键",
+          "role": "compute"
+        },
+        {
+          "id": "lookup",
+          "name": "查询缓存",
+          "role": "data-read"
+        },
+        {
+          "id": "hit",
+          "name": "返回缓存结果",
+          "role": "output"
+        },
+        {
+          "id": "miss",
+          "name": "继续后续计算",
+          "role": "other"
+        },
+        {
+          "id": "save",
+          "name": "写入缓存",
+          "role": "data-write"
+        }
       ],
       "flow": [
-        { "from": "key", "to": "lookup", "kind": "next" },
-        { "from": "lookup", "to": "hit", "kind": "conditional", "condition": "命中" },
-        { "from": "lookup", "to": "miss", "kind": "conditional", "condition": "未命中" },
-        { "from": "miss", "to": "save", "kind": "async" }
+        {
+          "from": "key",
+          "to": "lookup",
+          "kind": "next"
+        },
+        {
+          "from": "lookup",
+          "to": "hit",
+          "kind": "conditional",
+          "condition": "命中"
+        },
+        {
+          "from": "lookup",
+          "to": "miss",
+          "kind": "conditional",
+          "condition": "未命中"
+        },
+        {
+          "from": "miss",
+          "to": "save",
+          "kind": "async"
+        }
       ],
       "confidence": 0.3,
       "provenance": "ai",
-      "tags": ["planned", "v1-bonus"],
+      "tags": [
+        "planned",
+        "v1-bonus"
+      ],
       "updated_at": "2026-05-19T00:00:00Z"
     },
     {
       "id": "f-deploy",
       "name": "Serverless 与前端部署",
-      "summary": "后端部署阿里云函数计算，前端部署 GitHub Pages",
+      "summary": "Serverless Devs s.yaml 部署到阿里云 FC（Web Function 模式），FastAPI 直接挂 uvicorn",
       "epicId": "infra",
       "triggers": [
-        { "kind": "manual", "detail": "CI 或本地脚本触发" }
+        {
+          "kind": "manual",
+          "detail": "CI 或本地脚本触发"
+        }
       ],
       "steps": [
-        { "id": "build-be", "name": "打包后端函数", "role": "compute" },
-        { "id": "deploy-be", "name": "部署到函数计算", "role": "side-effect" },
-        { "id": "build-fe", "name": "构建前端静态资源", "role": "compute" },
-        { "id": "deploy-fe", "name": "发布到 GitHub Pages", "role": "side-effect" },
-        { "id": "smoke", "name": "线上冒烟验证", "role": "validation" }
+        {
+          "id": "build-be",
+          "name": "打包后端函数",
+          "role": "compute"
+        },
+        {
+          "id": "deploy-be",
+          "name": "部署到函数计算",
+          "role": "side-effect"
+        },
+        {
+          "id": "build-fe",
+          "name": "构建前端静态资源",
+          "role": "compute"
+        },
+        {
+          "id": "deploy-fe",
+          "name": "发布到 GitHub Pages",
+          "role": "side-effect"
+        },
+        {
+          "id": "smoke",
+          "name": "线上冒烟验证",
+          "role": "validation"
+        }
       ],
       "flow": [
-        { "from": "build-be", "to": "deploy-be", "kind": "next" },
-        { "from": "deploy-be", "to": "build-fe", "kind": "next" },
-        { "from": "build-fe", "to": "deploy-fe", "kind": "next" },
-        { "from": "deploy-fe", "to": "smoke", "kind": "next" }
+        {
+          "from": "build-be",
+          "to": "deploy-be",
+          "kind": "next"
+        },
+        {
+          "from": "deploy-be",
+          "to": "build-fe",
+          "kind": "next"
+        },
+        {
+          "from": "build-fe",
+          "to": "deploy-fe",
+          "kind": "next"
+        },
+        {
+          "from": "deploy-fe",
+          "to": "smoke",
+          "kind": "next"
+        }
       ],
       "confidence": 0.35,
       "provenance": "ai",
-      "tags": ["planned"],
+      "tags": [
+        "planned"
+      ],
       "updated_at": "2026-05-19T00:00:00Z"
     }
   ],
   "cross_feature": [
-    { "from": "f-frontend-upload", "to": "f-upload-pdf", "kind": "triggers", "note": "前端提交触发后端上传接口" },
-    { "from": "f-upload-pdf", "to": "f-pdf-parse", "kind": "flow", "mode": "async", "note": "上传完成后异步解析" },
-    { "from": "f-pdf-parse", "to": "f-text-clean", "kind": "flow", "note": "原始文本进入清洗" },
-    { "from": "f-text-clean", "to": "f-extract-basic", "kind": "flow", "note": "清洗文本供基本信息抽取" },
-    { "from": "f-text-clean", "to": "f-extract-job", "kind": "flow", "note": "清洗文本供求职信息抽取" },
-    { "from": "f-text-clean", "to": "f-extract-background", "kind": "flow", "note": "清洗文本供背景信息抽取" },
-    { "from": "f-extract-basic", "to": "f-result-json", "kind": "flow", "note": "基本信息进入结果聚合" },
-    { "from": "f-extract-job", "to": "f-result-json", "kind": "flow", "note": "求职信息进入结果聚合" },
-    { "from": "f-extract-background", "to": "f-result-json", "kind": "flow", "note": "背景信息进入结果聚合" },
-    { "from": "f-jd-keywords", "to": "f-match-score", "kind": "flow", "note": "岗位关键词供匹配评分" },
-    { "from": "f-extract-background", "to": "f-match-score", "kind": "flow", "note": "背景信息供匹配评分" },
-    { "from": "f-match-score", "to": "f-ai-score", "kind": "flow", "note": "规则分作为 AI 评分的输入" },
-    { "from": "f-ai-score", "to": "f-result-json", "kind": "flow", "note": "AI 评分进入结果聚合" },
-    { "from": "f-match-score", "to": "f-result-json", "kind": "flow", "note": "匹配评分进入结果聚合" },
-    { "from": "f-result-json", "to": "f-frontend-result", "kind": "flow", "mode": "async", "note": "聚合结果回传前端展示" },
-    { "from": "f-cache", "to": "f-pdf-parse", "kind": "depends_on", "note": "解析前查询缓存" },
-    { "from": "f-cache", "to": "f-match-score", "kind": "depends_on", "note": "评分前查询缓存" },
-    { "from": "f-deploy", "to": "f-upload-pdf", "kind": "depends_on", "note": "后端部署后接口可用" },
-    { "from": "f-deploy", "to": "f-frontend-upload", "kind": "depends_on", "note": "前端部署后用户可访问" }
+    {
+      "from": "f-frontend-upload",
+      "to": "f-upload-pdf",
+      "kind": "triggers",
+      "note": "前端提交触发后端上传接口"
+    },
+    {
+      "from": "f-upload-pdf",
+      "to": "f-pdf-parse",
+      "kind": "flow",
+      "mode": "async",
+      "note": "上传完成后异步解析"
+    },
+    {
+      "from": "f-pdf-parse",
+      "to": "f-text-clean",
+      "kind": "flow",
+      "note": "原始文本进入清洗"
+    },
+    {
+      "from": "f-text-clean",
+      "to": "f-extract-basic",
+      "kind": "flow",
+      "note": "清洗文本供基本信息抽取"
+    },
+    {
+      "from": "f-text-clean",
+      "to": "f-extract-job",
+      "kind": "flow",
+      "note": "清洗文本供求职信息抽取"
+    },
+    {
+      "from": "f-text-clean",
+      "to": "f-extract-background",
+      "kind": "flow",
+      "note": "清洗文本供背景信息抽取"
+    },
+    {
+      "from": "f-extract-basic",
+      "to": "f-result-json",
+      "kind": "flow",
+      "note": "基本信息进入结果聚合"
+    },
+    {
+      "from": "f-extract-job",
+      "to": "f-result-json",
+      "kind": "flow",
+      "note": "求职信息进入结果聚合"
+    },
+    {
+      "from": "f-extract-background",
+      "to": "f-result-json",
+      "kind": "flow",
+      "note": "背景信息进入结果聚合"
+    },
+    {
+      "from": "f-jd-keywords",
+      "to": "f-match-score",
+      "kind": "flow",
+      "note": "岗位关键词供匹配评分"
+    },
+    {
+      "from": "f-extract-background",
+      "to": "f-match-score",
+      "kind": "flow",
+      "note": "背景信息供匹配评分"
+    },
+    {
+      "from": "f-match-score",
+      "to": "f-ai-score",
+      "kind": "flow",
+      "note": "规则分作为 AI 评分的输入"
+    },
+    {
+      "from": "f-ai-score",
+      "to": "f-result-json",
+      "kind": "flow",
+      "note": "AI 评分进入结果聚合"
+    },
+    {
+      "from": "f-match-score",
+      "to": "f-result-json",
+      "kind": "flow",
+      "note": "匹配评分进入结果聚合"
+    },
+    {
+      "from": "f-result-json",
+      "to": "f-frontend-result",
+      "kind": "flow",
+      "mode": "async",
+      "note": "聚合结果回传前端展示"
+    },
+    {
+      "from": "f-cache",
+      "to": "f-pdf-parse",
+      "kind": "depends_on",
+      "note": "解析前查询缓存"
+    },
+    {
+      "from": "f-cache",
+      "to": "f-match-score",
+      "kind": "depends_on",
+      "note": "评分前查询缓存"
+    },
+    {
+      "from": "f-deploy",
+      "to": "f-upload-pdf",
+      "kind": "depends_on",
+      "note": "后端部署后接口可用"
+    },
+    {
+      "from": "f-deploy",
+      "to": "f-frontend-upload",
+      "kind": "depends_on",
+      "note": "前端部署后用户可访问"
+    }
   ],
   "epic_flow": [
-    { "from": "frontend", "to": "upload", "kind": "next", "note": "用户从前端发起上传" },
-    { "from": "upload", "to": "parse", "kind": "next", "note": "上传完成后进入解析" },
-    { "from": "parse", "to": "extract", "kind": "next", "note": "清洗文本后抽取信息" },
-    { "from": "extract", "to": "scoring", "kind": "next", "note": "信息齐备后进行岗位匹配" },
-    { "from": "scoring", "to": "frontend", "kind": "next", "note": "评分结果回到前端展示" },
-    { "from": "upload", "to": "infra", "kind": "depends_on", "note": "依赖 Serverless 与缓存底座" },
-    { "from": "scoring", "to": "infra", "kind": "depends_on", "note": "依赖缓存避免重复计算" }
+    {
+      "from": "frontend",
+      "to": "upload",
+      "kind": "next",
+      "note": "用户从前端发起上传"
+    },
+    {
+      "from": "upload",
+      "to": "parse",
+      "kind": "next",
+      "note": "上传完成后进入解析"
+    },
+    {
+      "from": "parse",
+      "to": "extract",
+      "kind": "next",
+      "note": "清洗文本后抽取信息"
+    },
+    {
+      "from": "extract",
+      "to": "scoring",
+      "kind": "next",
+      "note": "信息齐备后进行岗位匹配"
+    },
+    {
+      "from": "scoring",
+      "to": "frontend",
+      "kind": "next",
+      "note": "评分结果回到前端展示"
+    },
+    {
+      "from": "upload",
+      "to": "infra",
+      "kind": "depends_on",
+      "note": "依赖 Serverless 与缓存底座"
+    },
+    {
+      "from": "scoring",
+      "to": "infra",
+      "kind": "depends_on",
+      "note": "依赖缓存避免重复计算"
+    }
   ]
 }
