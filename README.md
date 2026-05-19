@@ -143,6 +143,22 @@ docs/spec/  Spec 三件套（requirements / design / tasks）
 - Memory 缓存跨 FC 实例不共享（生产建议接 Redis：`CACHE_BACKEND=redis` + `REDIS_URL=...`）
 - FC 主域名直接浏览器访问会触发下载（fetch 不受影响；生产应绑备案域名）
 
+## 在 CodeSee 上看功能流程图
+
+仓库内置了 [CodeSee](https://github.com/Kaka-cheaper/codeSee) 语义流程图（`.codesee/features.json` + `.codesee/layout.json`），把 14 个 feature 跨 6 个 epic 的关系一图看清。
+
+> CodeSee 是一个 AI 自动维护的功能流程图工具——不是调用图、不是 import 图，而是「这个项目对用户做了什么」的故事化视图。
+
+**3 步在线查看**（无需安装，全程不上传）：
+
+1. 下载这两个文件到同一个本地文件夹：
+   - [features.json](https://raw.githubusercontent.com/Kaka-cheaper/resumeAnalyzer/master/.codesee/features.json) · 功能流程数据
+   - [layout.json](https://raw.githubusercontent.com/Kaka-cheaper/resumeAnalyzer/master/.codesee/layout.json) · 画布布局
+2. 打开 [CodeSee Viewer](https://kaka-cheaper.github.io/codeSee/) 然后点右上角「**+ 添加项目**」
+3. 选刚才放两个文件的目录，授权读取即可
+
+> 浏览器要求 Chrome / Edge / Arc 等 Chromium 系。Firefox / Safari 用户拖 `features.json` 进画布也行。
+
 ## License
 
 MIT

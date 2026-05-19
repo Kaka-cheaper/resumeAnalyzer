@@ -1,0 +1,372 @@
+{
+  "version": "0",
+  "views": {
+    "overview": {
+      "epic:frontend": {
+        "x": -700.2807848183045,
+        "y": 297.9384836362363
+      },
+      "epic:upload": {
+        "x": -150,
+        "y": 164
+      },
+      "epic:parse": {
+        "x": 437.79992923773426,
+        "y": 162.29044548085147
+      },
+      "epic:extract": {
+        "x": 922.4222113220367,
+        "y": 164.74968478608406
+      },
+      "epic:scoring": {
+        "x": -41.61136056609155,
+        "y": 636.1982293341898
+      },
+      "epic:infra": {
+        "x": 389.8588002573518,
+        "y": -79.54754241723303
+      }
+    },
+    "steps:f-register": {
+      "step:f-register:input": {
+        "x": 16,
+        "y": 97.83333333333333
+      },
+      "step:f-register:validate": {
+        "x": 276,
+        "y": 97.83333333333333
+      },
+      "step:f-register:check-dup": {
+        "x": 536,
+        "y": 97.83333333333333
+      },
+      "step:f-register:hash": {
+        "x": 799.016304347826,
+        "y": 174.3641304347826
+      },
+      "step:f-register:save": {
+        "x": 1056,
+        "y": 107
+      },
+      "step:f-register:send-email": {
+        "x": 1316,
+        "y": 116.16666666666667
+      },
+      "step:f-register:ok": {
+        "x": 1316,
+        "y": 25.16666666666667
+      },
+      "step:f-register:fail-dup": {
+        "x": 796,
+        "y": 16
+      }
+    },
+    "steps:f-login": {
+      "step:f-login:input": {
+        "x": 16,
+        "y": 25.166666666666664
+      },
+      "step:f-login:find": {
+        "x": 276,
+        "y": 25.166666666666664
+      },
+      "step:f-login:verify": {
+        "x": 536,
+        "y": 25.166666666666664
+      },
+      "step:f-login:issue": {
+        "x": 796,
+        "y": 171.64673913043478
+      },
+      "step:f-login:ok": {
+        "x": 1056,
+        "y": 107
+      },
+      "step:f-login:fail": {
+        "x": 796.8288043478261,
+        "y": -61.07880434782608
+      }
+    },
+    "features-base": {
+      "feature:f-frontend-upload": {
+        "x": -2110.7019620457613,
+        "y": 648.8462090905907
+      },
+      "feature:f-frontend-result": {
+        "x": -1750.7019620457613,
+        "y": 648.8462090905907
+      },
+      "feature:f-upload-pdf": {
+        "x": -555,
+        "y": 314
+      },
+      "feature:f-pdf-parse": {
+        "x": 734.4998230943356,
+        "y": 309.7261137021287
+      },
+      "feature:f-text-clean": {
+        "x": 1094.4998230943356,
+        "y": 309.7261137021287
+      },
+      "feature:f-extract-basic": {
+        "x": 1766.0555283050917,
+        "y": 315.8742119652102
+      },
+      "feature:f-extract-job": {
+        "x": 2126.0555283050917,
+        "y": 315.8742119652102
+      },
+      "feature:f-extract-background": {
+        "x": 2486.0555283050917,
+        "y": 315.8742119652102
+      },
+      "feature:f-jd-keywords": {
+        "x": -644.0284014152289,
+        "y": 1398.4955733354745
+      },
+      "feature:f-match-score": {
+        "x": -284.0284014152289,
+        "y": 1398.4955733354745
+      },
+      "feature:f-ai-score": {
+        "x": 75.97159858477107,
+        "y": 1398.4955733354745
+      },
+      "feature:f-result-json": {
+        "x": -644.0284014152289,
+        "y": 1590.4955733354745
+      },
+      "feature:f-cache": {
+        "x": 614.6470006433794,
+        "y": -294.8688560430826
+      },
+      "feature:f-deploy": {
+        "x": 974.6470006433794,
+        "y": -294.8688560430826
+      }
+    },
+    "features": {
+      "feature:f-frontend-upload": {
+        "x": -2110.7019620457613,
+        "y": 648.8462090905907
+      },
+      "feature:f-frontend-result": {
+        "x": -1750.7019620457613,
+        "y": 648.8462090905907
+      },
+      "feature:f-upload-pdf": {
+        "x": -555,
+        "y": 314
+      },
+      "feature:f-pdf-parse": {
+        "x": 734.4998230943356,
+        "y": 309.7261137021287
+      },
+      "feature:f-text-clean": {
+        "x": 1094.4998230943356,
+        "y": 309.7261137021287
+      },
+      "feature:f-extract-basic": {
+        "x": 1766.0555283050917,
+        "y": 315.8742119652102
+      },
+      "feature:f-extract-job": {
+        "x": 2126.0555283050917,
+        "y": 315.8742119652102
+      },
+      "feature:f-extract-background": {
+        "x": 2486.0555283050917,
+        "y": 315.8742119652102
+      },
+      "feature:f-jd-keywords": {
+        "x": -644.0284014152289,
+        "y": 1398.4955733354745
+      },
+      "feature:f-match-score": {
+        "x": -284.0284014152289,
+        "y": 1398.4955733354745
+      },
+      "feature:f-ai-score": {
+        "x": 75.97159858477107,
+        "y": 1398.4955733354745
+      },
+      "feature:f-result-json": {
+        "x": -644.0284014152289,
+        "y": 1590.4955733354745
+      },
+      "feature:f-cache": {
+        "x": 614.6470006433794,
+        "y": -294.8688560430826
+      },
+      "feature:f-deploy": {
+        "x": 974.6470006433794,
+        "y": -294.8688560430826
+      }
+    },
+    "features-group-offset": {
+      "catalog": {
+        "x": -153.56430446134618,
+        "y": 904.5191304799437
+      },
+      "cart": {
+        "x": -2381.2814920741675,
+        "y": 36.123212709363486
+      },
+      "order": {
+        "x": -2927.2588942861294,
+        "y": 32.37095143760325
+      },
+      "admin": {
+        "x": -9475.43992794989,
+        "y": 1216.2228897270975
+      },
+      "auth": {
+        "x": -661.2922936538962,
+        "y": 18.497686535773255
+      }
+    },
+    "features-offset": {
+      "feature:f-register": {
+        "x": 330.6461468269481,
+        "y": -9.248843267886627
+      },
+      "feature:f-login": {
+        "x": 330.6461468269481,
+        "y": -9.248843267886627
+      },
+      "feature:f-product-list": {
+        "x": -221.49304315867175,
+        "y": -304.2780729537843
+      },
+      "feature:f-product-search": {
+        "x": -244.6151513283894,
+        "y": -461.5084085078578
+      },
+      "feature:f-product-detail": {
+        "x": -945.2150288708044,
+        "y": -463.82061932482964
+      },
+      "feature:f-add-to-cart": {
+        "x": 1049.5958862018115,
+        "y": -20.373817171653798
+      },
+      "feature:f-view-cart": {
+        "x": 982.5417725096331,
+        "y": -24.99823880559711
+      },
+      "feature:f-checkout": {
+        "x": 1463.6294471430647,
+        "y": -16.185475718801626
+      },
+      "feature:f-pay-callback": {
+        "x": 1463.6294471430647,
+        "y": -16.185475718801626
+      },
+      "feature:f-order-list": {
+        "x": 1463.6294471430647,
+        "y": -16.185475718801626
+      },
+      "feature:f-admin-products": {
+        "x": 4737.719963974943,
+        "y": -608.1114448635494
+      },
+      "feature:f-admin-dashboard": {
+        "x": 4737.719963974943,
+        "y": -608.1114448635494
+      }
+    },
+    "steps:f-product-detail": {
+      "step:f-product-detail:input": {
+        "x": 16,
+        "y": 25.166666666666664
+      },
+      "step:f-product-detail:fetch": {
+        "x": 276,
+        "y": 25.166666666666664
+      },
+      "step:f-product-detail:stock": {
+        "x": 536,
+        "y": 107
+      },
+      "step:f-product-detail:ok": {
+        "x": 796,
+        "y": 107
+      },
+      "step:f-product-detail:not-found": {
+        "x": 536,
+        "y": 16
+      }
+    },
+    "steps:f-add-to-cart": {
+      "step:f-add-to-cart:input": {
+        "x": 16,
+        "y": 25.166666666666664
+      },
+      "step:f-add-to-cart:auth": {
+        "x": 276,
+        "y": 25.166666666666664
+      },
+      "step:f-add-to-cart:check-stock": {
+        "x": 536,
+        "y": 25.166666666666664
+      },
+      "step:f-add-to-cart:upsert": {
+        "x": 858.1603260869565,
+        "y": 105.34239130434781
+      },
+      "step:f-add-to-cart:ok": {
+        "x": 1145.5108695652175,
+        "y": 105.34239130434784
+      },
+      "step:f-add-to-cart:fail-stock": {
+        "x": 852.3586956521739,
+        "y": 24.288043478260875
+      }
+    },
+    "steps:f-frontend-result": {
+      "step:f-frontend-result:recv": {
+        "x": 16,
+        "y": 16
+      },
+      "step:f-frontend-result:render": {
+        "x": 284,
+        "y": 16
+      },
+      "step:f-frontend-result:input-jd": {
+        "x": 552,
+        "y": 16
+      },
+      "step:f-frontend-result:show-score": {
+        "x": 820,
+        "y": 16
+      }
+    },
+    "steps:f-upload-pdf": {
+      "step:f-upload-pdf:recv": {
+        "x": 16,
+        "y": 70.66666666666666
+      },
+      "step:f-upload-pdf:check-type": {
+        "x": 284,
+        "y": 70.66666666666666
+      },
+      "step:f-upload-pdf:check-size": {
+        "x": 552,
+        "y": 25.16666666666666
+      },
+      "step:f-upload-pdf:store": {
+        "x": 901.6521739130435,
+        "y": 16
+      },
+      "step:f-upload-pdf:ok": {
+        "x": 1183.2608695652175,
+        "y": 17.701086956521735
+      },
+      "step:f-upload-pdf:fail": {
+        "x": 820,
+        "y": 107
+      }
+    }
+  },
+  "generated_at": "2026-05-19T05:11:38.590Z"
+}
