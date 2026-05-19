@@ -1,19 +1,12 @@
-"""健康检查路由
-
-提供存活探针接口，用于：
-- 部署后冒烟验证（curl /health）
-- 阿里云 FC 健康探测
-- CI/CD 流水线探活
-"""
+"""健康检查路由"""
 
 from __future__ import annotations
 
-import time
-import uuid
+from fastapi import APIRouter, Request
 
-from fastapi import APIRouter
-
-from app import __version__
+from app.core.config import get_settings
+from app.core.response import get_request_context, make_meta
+from app.models.common import APIResponse
 
 router = APIRouter(tags=["health"])
 
@@ -21,23 +14,41 @@ router = APIRouter(tags=["health"])
 @router.get(
     "/health",
     summary="健康检查",
-    description="返回服务存活状态与版本号，可用于探活/冒烟测试。",
+    description="返回服务存活状态与版本号，用于探活、冒烟测试、负载均衡探针。",
+    responses={
+        200: {
+            "description": "服务存活",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "code": "OK",
+                        "message": "success",
+                        "data": {
+                            "status": "alive",
+                            "version": "0.1.0",
+                            "environment": "development",
+                            "llm_configured": False,
+                        },
+                        "meta": {
+                            "elapsed_ms": 1,
+                            "tokens_used": 0,
+                            "cache_hit": False,
+                            "request_id": "req-d7ab70d3c003",
+                        },
+                    }
+                }
+            },
+        }
+    },
 )
-async def health() -> dict:
-    """返回服务状态信息。
-
-    A1 阶段先用最简 dict 满足验收形状；A2 阶段会替换为统一 APIResponse 信封。
-    """
-    started = time.perf_counter()
-    return {
-        "code": "OK",
-        "message": "success",
-        "data": {
-            "status": "alive",
-            "version": __version__,
-        },
-        "meta": {
-            "elapsed_ms": int((time.perf_counter() - started) * 1000),
-            "request_id": f"req-{uuid.uuid4().hex[:12]}",
-        },
+async def health(request: Request) -> dict:
+    """返回服务存活状态。"""
+    ctx = get_request_context(request)
+    settings = get_settings()
+    data = {
+        "status": "alive",
+        "version": settings.app_version,
+        "environment": settings.environment,
+        "llm_configured": settings.is_llm_configured,
     }
+    return APIResponse.ok(data, meta=make_meta(ctx))

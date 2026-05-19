@@ -1,24 +1,23 @@
 """FastAPI 应用入口
 
-A1 阶段：实例化 + CORS + 健康检查。
-后续阶段会逐步注入：异常 handler（A2）/ 业务路由（B-F）/ 启动钩子（D）。
+A2 阶段：接入配置 / 异常体系 / 结构化日志 / 统一响应封装 / 请求上下文中间件。
 """
 
 from __future__ import annotations
-
-import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
 from app.api import health
+from app.core.config import get_settings
+from app.core.handlers import register_handlers, request_context_middleware
+from app.core.logging import setup_logging
 
-# CORS 来源：从环境变量读，默认放开（前端 GH Pages 跨域接入零门槛）
-_cors_origins_env = os.getenv("CORS_ORIGINS", "*")
-_cors_origins = (
-    ["*"] if _cors_origins_env.strip() == "*" else [o.strip() for o in _cors_origins_env.split(",")]
-)
+# 启动时配置日志（先于其它模块输出第一条日志）
+setup_logging()
+
+settings = get_settings()
 
 app = FastAPI(
     title="智能简历分析系统",
@@ -31,14 +30,21 @@ app = FastAPI(
     version=__version__,
 )
 
-# CORS：默认放开，便于前端（GH Pages）后续接入
+# CORS：从配置读，默认放开（前端 GH Pages 跨域接入零门槛）
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_cors_origins,
+    allow_origins=settings.cors_origins_list,
     allow_credentials=False,  # 公开 API，无需携带 cookie
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Request-ID"],
 )
+
+# 请求上下文中间件（在路由之前注入 request_id 与计时）
+app.middleware("http")(request_context_middleware)
+
+# 全局异常 handler
+register_handlers(app)
 
 # 注册路由
 app.include_router(health.router)
@@ -46,7 +52,7 @@ app.include_router(health.router)
 
 @app.get("/", include_in_schema=False)
 async def root() -> dict:
-    """根路径重定向到 Swagger UI（评审/演示便捷入口）。"""
+    """根路径返回演示入口（不进 OpenAPI schema）。"""
     return {
         "code": "OK",
         "message": "智能简历分析系统已启动",

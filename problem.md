@@ -42,3 +42,32 @@
 - `tests/__init__.py`（新建占位）
 - `problem.md`（追加本条记录）
 应当达成的效果：项目骨架可运行，FastAPI 启动正常，健康检查返回标准信封，Swagger UI 与 OpenAPI 路径已就绪；后续 A2 阶段可在此基础上替换响应封装、注入异常体系；codesee features.json 暂不更新（骨架属于非业务功能改动，所有 planned feature 都未真正落地实现）。
+
+
+问题4：开干 A2（基础设施：配置/异常/日志/响应封装）
+解决方案：按 tasks.md A2 完整落地框架基础设施，从此 B-F 阶段写业务时不用关心响应格式与错误处理。
+- `app/core/config.py`：`Settings(BaseSettings)` + `get_settings()` lru_cache 单例；16 个配置项含校验（数值范围、Literal 枚举、权重一致性 field_validator）；派生属性 `max_upload_size_bytes` / `cors_origins_list` / `is_llm_configured`
+- `app/core/exceptions.py`：`AppException` 基类（code / message / http_status / suggestion / details）+ 9 个子类映射 design.md §4.6 错误码全集（InvalidFileType/FileTooLarge/MissingParameter/PDFParseError/ResumeNotFound/LLMTimeout/LLMRateLimited/LLMError）
+- `app/models/common.py`：`APIResponse` 通用泛型 + `Meta` 模型；`APIResponse.ok()` / `APIResponse.error()` 工厂方法返回 dict（绕开 FastAPI Generic 序列化边界）
+- `app/core/response.py`：`RequestContext` dataclass（request_id/started_at/tokens_used/cache_hit）+ `new_request_context()` / `get_request_context()` / `make_meta()`；提供 `add_tokens()` / `mark_cache_hit()` 让 LLM/缓存层主动上报
+- `app/core/logging.py`：`JsonFormatter` 单行 JSON（ts/level/logger/message + extra 透传）；`setup_logging()` 幂等接管 root + uvicorn 日志；不打印 prompt 内容（隐私）
+- `app/core/handlers.py`：`request_context_middleware` 注入 ctx + 透传 X-Request-ID + 兜底访问日志；4 个 exception handler（AppException / StarletteHTTPException / RequestValidationError / Exception 兜底）；统一构造 `_build_error_response`
+- 改造 `app/main.py`：startup setup_logging → 装 CORS（从 settings 读）→ 注册中间件 → 注册 handlers
+- 改造 `app/api/health.py`：用 `APIResponse.ok` + `make_meta(ctx)` 替换 dict 拼装；补 OpenAPI 200 example
+- 修 ruff：N818 在 exceptions.py 关掉（基类沿用 FastAPI/Starlette 命名惯例 `*Exception`）；ruff format 全过
+
+验收覆盖：
+1. GET /health 返回统一信封 + meta（elapsed_ms/tokens_used/cache_hit/request_id）✓
+2. GET /api/notexist 返回 NOT_FOUND 中文 message 而非 starlette 默认 "Not Found"（修了 code_map 优先级 bug）✓
+3. 客户端传 X-Request-ID 被透传并写入 meta.request_id 与响应头 ✓
+4. CORS preflight OPTIONS /health 返回 200 ✓
+5. 服务端日志全部为单行 JSON，含 scope=http/error 分类，request_id 跨日志关联 ✓
+6. ruff check + format 全过
+
+修改的代码文件：
+- `app/core/{config,exceptions,response,logging,handlers}.py`（新建）
+- `app/models/common.py`（新建）
+- `app/main.py`、`app/api/health.py`（重写以接入新基础设施）
+- `pyproject.toml`（追加 N818 ignore）
+- `problem.md`（追加本条记录）
+应当达成的效果：B-F 阶段路由层只需 `raise SomeException()` 或 `return APIResponse.ok(data, meta=make_meta(ctx))`，不再手写 dict、不再关心 status code / 日志 / request_id；所有错误统一走 handlers 包装为标准 JSON 信封；FC 部署后日志可直接被阿里云 SLS 索引；token 用量与缓存命中通过 ctx.add_tokens() / ctx.mark_cache_hit() 在调用链中自动累加。

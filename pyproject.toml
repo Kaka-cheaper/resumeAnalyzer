@@ -27,6 +27,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["N802", "N806"]  # 测试函数命名宽松
+"app/core/exceptions.py" = ["N818"]  # AppException 是基类，遵循 FastAPI/Starlette 命名惯例
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
