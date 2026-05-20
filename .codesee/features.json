@@ -2,8 +2,8 @@
   "version": "0",
   "manifest": {
     "repo": "智能简历分析系统",
-    "generated_at": "2026-05-19T09:30:00Z",
-    "generator": "ai@claude-opus-4.7 via planning+spec",
+    "generated_at": "2026-05-20T02:30:00Z",
+    "generator": "ai@claude-opus-4.7 via planning+sync+audit",
     "lang": "zh-CN"
   },
   "epics": [
@@ -54,7 +54,7 @@
     {
       "id": "f-frontend-upload",
       "name": "前端上传页",
-      "summary": "本期不实现 UI；后端预留接口契约，CORS 与错误码已就绪",
+      "summary": "Tailwind 单文件前端：拖拽上传 + 文件类型校验 + multipart 提交，含上传中骨架屏",
       "epicId": "frontend",
       "triggers": [
         {
@@ -66,22 +66,52 @@
         {
           "id": "pick",
           "name": "选择简历文件",
-          "role": "input"
+          "role": "input",
+          "refs": [
+            {
+              "file": "frontend/index.html"
+            }
+          ]
         },
         {
           "id": "validate",
           "name": "校验文件类型",
-          "role": "validation"
+          "role": "validation",
+          "refs": [
+            {
+              "file": "frontend/index.html"
+            }
+          ]
         },
         {
           "id": "submit",
           "name": "提交到后端",
-          "role": "side-effect"
+          "role": "side-effect",
+          "refs": [
+            {
+              "file": "frontend/index.html"
+            }
+          ]
         },
         {
           "id": "wait",
           "name": "展示加载状态",
-          "role": "output"
+          "role": "output",
+          "refs": [
+            {
+              "file": "frontend/index.html"
+            }
+          ]
+        },
+        {
+          "id": "fail",
+          "name": "展示上传错误",
+          "role": "error",
+          "refs": [
+            {
+              "file": "frontend/index.html"
+            }
+          ]
         }
       ],
       "flow": [
@@ -100,20 +130,26 @@
           "from": "submit",
           "to": "wait",
           "kind": "async"
+        },
+        {
+          "from": "submit",
+          "to": "fail",
+          "kind": "error",
+          "condition": "上传失败/类型错/超大"
         }
       ],
-      "confidence": 0.4,
+      "confidence": 0.85,
       "provenance": "ai",
       "tags": [
-        "planned",
-        "deferred"
+        "sdd",
+        "implemented"
       ],
-      "updated_at": "2026-05-19T00:00:00Z"
+      "updated_at": "2026-05-20T02:30:00Z"
     },
     {
       "id": "f-frontend-result",
       "name": "结果展示页",
-      "summary": "本期不实现 UI；Swagger UI 作为临时演示页",
+      "summary": "Aurora 光斑深色主题渲染三段抽取结果与匹配评分（圆环总分 + 三维度卡片 + 优势/差距）",
       "epicId": "frontend",
       "triggers": [
         {
@@ -125,22 +161,52 @@
         {
           "id": "recv",
           "name": "接收结果数据",
-          "role": "input"
+          "role": "input",
+          "refs": [
+            {
+              "file": "frontend/index.html"
+            }
+          ]
         },
         {
           "id": "render",
           "name": "渲染结构化信息",
-          "role": "output"
+          "role": "output",
+          "refs": [
+            {
+              "file": "frontend/index.html"
+            }
+          ]
         },
         {
           "id": "input-jd",
           "name": "输入岗位描述",
-          "role": "input"
+          "role": "input",
+          "refs": [
+            {
+              "file": "frontend/index.html"
+            }
+          ]
         },
         {
           "id": "show-score",
           "name": "展示匹配评分",
-          "role": "output"
+          "role": "output",
+          "refs": [
+            {
+              "file": "frontend/index.html"
+            }
+          ]
+        },
+        {
+          "id": "fail",
+          "name": "展示评分错误",
+          "role": "error",
+          "refs": [
+            {
+              "file": "frontend/index.html"
+            }
+          ]
         }
       ],
       "flow": [
@@ -158,15 +224,21 @@
           "from": "input-jd",
           "to": "show-score",
           "kind": "async"
+        },
+        {
+          "from": "input-jd",
+          "to": "fail",
+          "kind": "error",
+          "condition": "JD 为空/匹配接口失败"
         }
       ],
-      "confidence": 0.4,
+      "confidence": 0.85,
       "provenance": "ai",
       "tags": [
-        "planned",
-        "deferred"
+        "sdd",
+        "implemented"
       ],
-      "updated_at": "2026-05-19T00:00:00Z"
+      "updated_at": "2026-05-20T02:30:00Z"
     },
     {
       "id": "f-upload-pdf",
@@ -462,6 +534,16 @@
               "file": "app/utils/text.py"
             }
           ]
+        },
+        {
+          "id": "fail",
+          "name": "返回清洗失败",
+          "role": "error",
+          "refs": [
+            {
+              "file": "app/core/exceptions.py"
+            }
+          ]
         }
       ],
       "flow": [
@@ -484,6 +566,12 @@
           "from": "segment",
           "to": "out",
           "kind": "next"
+        },
+        {
+          "from": "in",
+          "to": "fail",
+          "kind": "error",
+          "condition": "文本为空/全空白"
         }
       ],
       "confidence": 0.9,
@@ -491,7 +579,7 @@
       "tags": [
         "sdd"
       ],
-      "updated_at": "2026-05-19T05:30:00Z"
+      "updated_at": "2026-05-20T02:30:00Z"
     },
     {
       "id": "f-extract-basic",
@@ -683,6 +771,16 @@
               "file": "app/api/resume.py"
             }
           ]
+        },
+        {
+          "id": "fail",
+          "name": "返回空求职信息",
+          "role": "error",
+          "refs": [
+            {
+              "file": "app/services/extract_service.py"
+            }
+          ]
         }
       ],
       "flow": [
@@ -705,6 +803,12 @@
           "from": "parse",
           "to": "out",
           "kind": "next"
+        },
+        {
+          "from": "call-llm",
+          "to": "fail",
+          "kind": "error",
+          "condition": "LLM 失败"
         }
       ],
       "confidence": 0.88,
@@ -713,7 +817,7 @@
         "sdd",
         "v1-bonus"
       ],
-      "updated_at": "2026-05-19T08:30:00Z"
+      "updated_at": "2026-05-20T02:30:00Z"
     },
     {
       "id": "f-extract-background",
@@ -786,6 +890,16 @@
               "file": "app/api/resume.py"
             }
           ]
+        },
+        {
+          "id": "fail",
+          "name": "返回空背景信息",
+          "role": "error",
+          "refs": [
+            {
+              "file": "app/services/extract_service.py"
+            }
+          ]
         }
       ],
       "flow": [
@@ -813,6 +927,12 @@
           "from": "calc-years",
           "to": "out",
           "kind": "next"
+        },
+        {
+          "from": "call-llm",
+          "to": "fail",
+          "kind": "error",
+          "condition": "LLM 失败"
         }
       ],
       "confidence": 0.9,
@@ -821,7 +941,7 @@
         "sdd",
         "v1-bonus"
       ],
-      "updated_at": "2026-05-19T08:30:00Z"
+      "updated_at": "2026-05-20T02:30:00Z"
     },
     {
       "id": "f-jd-keywords",
@@ -1021,6 +1141,16 @@
               "file": "app/api/match.py"
             }
           ]
+        },
+        {
+          "id": "fail",
+          "name": "降级纯启发式",
+          "role": "error",
+          "refs": [
+            {
+              "file": "app/services/match_service.py"
+            }
+          ]
         }
       ],
       "flow": [
@@ -1048,6 +1178,12 @@
           "from": "weighted",
           "to": "out",
           "kind": "next"
+        },
+        {
+          "from": "weighted",
+          "to": "fail",
+          "kind": "error",
+          "condition": "LLM 不可用时融合权重退化为 1:0"
         }
       ],
       "confidence": 0.92,
@@ -1055,7 +1191,7 @@
       "tags": [
         "sdd"
       ],
-      "updated_at": "2026-05-19T09:30:00Z"
+      "updated_at": "2026-05-20T02:30:00Z"
     },
     {
       "id": "f-ai-score",
@@ -1128,6 +1264,16 @@
               "file": "app/api/match.py"
             }
           ]
+        },
+        {
+          "id": "fail",
+          "name": "跳过 LLM 评分",
+          "role": "error",
+          "refs": [
+            {
+              "file": "app/services/match_service.py"
+            }
+          ]
         }
       ],
       "flow": [
@@ -1155,6 +1301,12 @@
           "from": "merge",
           "to": "out",
           "kind": "next"
+        },
+        {
+          "from": "call-llm",
+          "to": "fail",
+          "kind": "error",
+          "condition": "LLM 调用失败/未配置"
         }
       ],
       "confidence": 0.9,
@@ -1163,7 +1315,7 @@
         "sdd",
         "v1-bonus"
       ],
-      "updated_at": "2026-05-19T09:30:00Z"
+      "updated_at": "2026-05-20T02:30:00Z"
     },
     {
       "id": "f-result-json",
@@ -1332,6 +1484,19 @@
               "file": "app/cache/redis_impl.py"
             }
           ]
+        },
+        {
+          "id": "fail",
+          "name": "Redis 连接失败降级",
+          "role": "error",
+          "refs": [
+            {
+              "file": "app/cache/redis_impl.py"
+            },
+            {
+              "file": "app/services/cache_service.py"
+            }
+          ]
         }
       ],
       "flow": [
@@ -1356,6 +1521,12 @@
           "from": "miss",
           "to": "save",
           "kind": "async"
+        },
+        {
+          "from": "lookup",
+          "to": "fail",
+          "kind": "error",
+          "condition": "Redis 不可用 → 静默返 None / fallback 到 memory"
         }
       ],
       "confidence": 0.92,
@@ -1364,12 +1535,12 @@
         "sdd",
         "v1-bonus"
       ],
-      "updated_at": "2026-05-19T07:00:00Z"
+      "updated_at": "2026-05-20T02:30:00Z"
     },
     {
       "id": "f-deploy",
       "name": "Serverless 与前端部署",
-      "summary": "Serverless Devs s.yaml 部署到阿里云 FC（Web Function 模式），FastAPI 直接挂 uvicorn",
+      "summary": "Docker 镜像（python:3.10-slim）+ 阿里云 ACR + FC Custom Container；前端 GH Pages workflow 自动部署",
       "epicId": "infra",
       "triggers": [
         {
@@ -1380,28 +1551,69 @@
       "steps": [
         {
           "id": "build-be",
-          "name": "打包后端函数",
-          "role": "compute"
+          "name": "Docker 构建后端镜像",
+          "role": "compute",
+          "refs": [
+            {
+              "file": "Dockerfile"
+            },
+            {
+              "file": "deploy/requirements-prod.txt"
+            }
+          ]
         },
         {
           "id": "deploy-be",
-          "name": "部署到函数计算",
-          "role": "side-effect"
+          "name": "推 ACR 并部署到 FC",
+          "role": "side-effect",
+          "refs": [
+            {
+              "file": "deploy/s.yaml"
+            },
+            {
+              "file": "deploy/export_env.ps1"
+            }
+          ]
         },
         {
           "id": "build-fe",
           "name": "构建前端静态资源",
-          "role": "compute"
+          "role": "compute",
+          "refs": [
+            {
+              "file": "frontend/index.html"
+            }
+          ]
         },
         {
           "id": "deploy-fe",
-          "name": "发布到 GitHub Pages",
-          "role": "side-effect"
+          "name": "GH Pages 自动发布",
+          "role": "side-effect",
+          "refs": [
+            {
+              "file": ".github/workflows/deploy-pages.yml"
+            }
+          ]
         },
         {
           "id": "smoke",
           "name": "线上冒烟验证",
-          "role": "validation"
+          "role": "validation",
+          "refs": [
+            {
+              "file": "scripts/check_llm.py"
+            }
+          ]
+        },
+        {
+          "id": "fail",
+          "name": "部署失败回滚",
+          "role": "error",
+          "refs": [
+            {
+              "file": "deploy/s.yaml"
+            }
+          ]
         }
       ],
       "flow": [
@@ -1424,14 +1636,21 @@
           "from": "deploy-fe",
           "to": "smoke",
           "kind": "next"
+        },
+        {
+          "from": "smoke",
+          "to": "fail",
+          "kind": "error",
+          "condition": "健康探针失败 → s remove 回滚到上一版本镜像"
         }
       ],
-      "confidence": 0.35,
+      "confidence": 0.92,
       "provenance": "ai",
       "tags": [
-        "planned"
+        "sdd",
+        "implemented"
       ],
-      "updated_at": "2026-05-19T00:00:00Z"
+      "updated_at": "2026-05-20T02:30:00Z"
     }
   ],
   "cross_feature": [
@@ -1550,6 +1769,30 @@
       "to": "f-frontend-upload",
       "kind": "depends_on",
       "note": "前端部署后用户可访问"
+    },
+    {
+      "from": "f-deploy",
+      "to": "f-cache",
+      "kind": "depends_on",
+      "note": "FC 实例启动时初始化缓存层（memory 默认 / redis 通过环境变量切换）"
+    },
+    {
+      "from": "f-deploy",
+      "to": "f-jd-keywords",
+      "kind": "depends_on",
+      "note": "后端部署后岗位关键词接口可用"
+    },
+    {
+      "from": "f-deploy",
+      "to": "f-match-score",
+      "kind": "depends_on",
+      "note": "后端部署后匹配评分接口可用"
+    },
+    {
+      "from": "f-deploy",
+      "to": "f-result-json",
+      "kind": "depends_on",
+      "note": "后端部署后结果聚合接口可用"
     }
   ],
   "epic_flow": [
